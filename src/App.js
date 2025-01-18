@@ -1,6 +1,7 @@
 import logo from './logo.svg';
 import './App.css';
 import ExtractionComponent from './components/ExtractionComponent';
+import DocumentIngestionOptions from './components/DocumentIngestionOptions'
 
 function App() {
   return (
@@ -21,7 +22,8 @@ function App() {
       </header>
     </div> */
     <div className="App">
-    <ExtractionComponent />
+        <DocumentIngestionOptions />
+        <ExtractionComponent />
   </div>
   );
 }
