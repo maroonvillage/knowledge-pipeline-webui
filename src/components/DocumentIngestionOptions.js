@@ -1,41 +1,57 @@
-import React, {useRef, useState} from 'react';
+import React, { useRef, useState } from 'react';
 import { Button, Typography, Box, LinearProgress } from '@mui/material';
 
 function DocumentIngestionOptions() {
-
     const fileInputRef = useRef(null);
     const [file, setFile] = useState(null);
-    const [uploading, setUploading] = useState(false)
+    const [uploading, setUploading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState('');
 
     const handleLocalFileUpload = () => {
-        // Implement local file upload logic here
-        //alert('Implement Local file upload logic');
-        //console.log("Implement file upload functionality")
         fileInputRef.current.click();
     };
 
     const handleFileSelected = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-           // Implement file upload logic here
-           //alert(`File name is: ${file.name}`);
-           //console.log("Selected file:", file);
-           setFile(file);
+        const selectedFile = event.target.files[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+            setUploadStatus('');
         }
     };
 
-    const handleUpload = () => {
-        if (!file) {
-            alert("Please select a file");
-            return;
+const handleUpload = async () => {
+    if (!file) {
+        setUploadStatus("Please select a file");
+        return;
+    }
+    setUploading(true);
+     setUploadStatus("Uploading...")
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+
+    try {
+      const response = await fetch('http://localhost:5001/upload', {
+            method: 'POST',
+            body: formData,
+      });
+        if (response.ok) {
+           const result = await response.json();
+           setUploadStatus(`Upload Successful! Filename: ${result.filename}`);
+        } else{
+            const errorData = await response.json();
+            setUploadStatus(`Upload failed with error: ${errorData.error}`)
         }
-        setUploading(true);
-       // Here you will implement the file upload to your backend
-       alert(`File name: ${file.name}, File type: ${file.type}, File size: ${file.size}`);
-       console.log("Selected file:", file);
+    } catch (error) {
+         setUploadStatus(`Upload Failed with error: ${error.message}`)
+       console.error('There was an error:', error);
+    } finally {
        setUploading(false);
+    }
 
-    };
+
+};
 
     return (
        <Box>
@@ -56,6 +72,7 @@ function DocumentIngestionOptions() {
                   {uploading ? 'Uploading...' : 'Start Extraction'}
              </Button>
             {uploading && <LinearProgress />}
+             {uploadStatus && <Typography variant="body2">{uploadStatus}</Typography>}
         </Box>
     );
 }
