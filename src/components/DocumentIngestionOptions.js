@@ -1,5 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { Button, Typography, Box, LinearProgress } from '@mui/material';
+import { Button, Typography, Box, LinearProgress, Grid2 } from '@mui/material';
+import AppTheme from '../shared-theme/AppTheme';
+import CssBaseline from '@mui/material/CssBaseline';
+import AppNavbar from './_dashboard_components/AppNavbar';
+import SideMenu from './_dashboard_components/SideMenu';
 
 function DocumentIngestionOptions() {
     const fileInputRef = useRef(null);
@@ -54,26 +58,42 @@ const handleUpload = async () => {
 };
 
     return (
-       <Box>
+        <AppTheme>
+        <CssBaseline enableColorScheme />
+       
+        <Box sx={{ flexGrow: 1}}>
+        <SideMenu />
+        <AppNavbar />
+       <Grid2 container direction="column" spacing={2} justifyContent="center" alignItems="center">
+          <Grid2 item>
             <Typography variant="h6" component="h2">
-               Ingest Document
+              Ingest Document
             </Typography>
-            <Button variant="contained" color="primary" onClick={handleLocalFileUpload}>
-                Upload from local computer
-            </Button>
-            <input
-                type="file"
-                ref={fileInputRef}
-                style={{display: 'none'}}
-                onChange={handleFileSelected}
-            />
-            {file && <Typography variant="body2">Selected File: {file.name}</Typography>}
-             <Button variant="contained" color="secondary" onClick={handleUpload} disabled={uploading}>
-                  {uploading ? 'Uploading...' : 'Start Extraction'}
+         </Grid2>
+         <Grid2 item>
+           <Button variant="contained" color="primary" onClick={handleLocalFileUpload}>
+               Upload from local computer
+           </Button>
+         </Grid2>
+         <input
+             type="file"
+             ref={fileInputRef}
+             style={{display: 'none'}}
+             onChange={handleFileSelected}
+         />
+         <Grid2 item>
+              {file && <Typography variant="body2">Selected File: {file.name}</Typography>}
+        </Grid2>
+         <Grid2 item>
+            <Button variant="contained" color="secondary" onClick={handleUpload} disabled={uploading}>
+                 {uploading ? 'Uploading...' : 'Start Extraction'}
              </Button>
-            {uploading && <LinearProgress />}
-             {uploadStatus && <Typography variant="body2">{uploadStatus}</Typography>}
-        </Box>
+          </Grid2>
+           {uploading &&  <Grid2 item> <LinearProgress /> </Grid2>}
+           {uploadStatus &&  <Grid2 item> <Typography variant="body2">{uploadStatus}</Typography></Grid2>}
+       </Grid2>
+  </Box>
+        </AppTheme>
     );
 }
 
