@@ -42,7 +42,8 @@ const handleUpload = async () => {
       });
         if (response.ok) {
            const result = await response.json();
-           setUploadStatus(`Upload Successful! Filename: ${result.filename}`);
+           //setUploadStatus(`Upload Successful! Filename: ${result.filename}`);
+           setUploadStatus(`Upload Successful! Filename: ${result.filename}, File size: ${result.size}, File change time: ${result.time}`);
         } else{
             const errorData = await response.json();
             setUploadStatus(`Upload failed with error: ${errorData.error}`)
