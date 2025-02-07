@@ -40,7 +40,6 @@ async def get_files_from_dir(directory,extension='.json'):
 
 async def call_pdfdocintel(filename:str):
     
-    
         #parm_config = ParmConfig()
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
                              csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results")

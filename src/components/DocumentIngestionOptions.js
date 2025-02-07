@@ -73,7 +73,7 @@ const handleUpload = async () => {
          </Grid2>
          <Grid2 item>
            <Button variant="contained" color="primary" onClick={handleLocalFileUpload}>
-               Upload from local computer
+               Select from local computer
            </Button>
          </Grid2>
          <input
@@ -87,7 +87,7 @@ const handleUpload = async () => {
         </Grid2>
          <Grid2 item>
             <Button variant="contained" color="secondary" onClick={handleUpload} disabled={uploading}>
-                 {uploading ? 'Uploading...' : 'Start Extraction'}
+                 {uploading ? 'Uploading...' : 'Upload File'}
              </Button>
           </Grid2>
            {uploading &&  <Grid2 item> <LinearProgress /> </Grid2>}
