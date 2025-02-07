@@ -3,7 +3,8 @@ import os
 from fastapi import UploadFile
 from models.file_metadata import FileMetadata
 from typing import List
-import pdfdocintel
+
+from pdfdocintel import main, ParmConfig;
 
 
 async def process_file(file: UploadFile, upload_folder:str) -> FileMetadata:
@@ -35,3 +36,17 @@ async def get_files_from_dir(directory,extension='.json'):
         filtered_files = [f for f in files]
 
     return filtered_files
+
+
+async def call_pdfdocintel(filename:str):
+    
+    
+        #parm_config = ParmConfig()
+    parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
+                             csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results")
+        
+    # Load the PDF file
+    main(filename,parm_config)
+
+
+    

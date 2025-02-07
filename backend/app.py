@@ -1,11 +1,13 @@
+import asyncio
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 import os
 from typing import Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
-from services.file_processing import process_file, get_files_from_dir
+from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel
 from models.file_metadata import FileMetadata
 
+#import pdfdocintel as pdf
 
 
 app = FastAPI()
@@ -63,7 +65,20 @@ async def get_file_metadata():
 async def start_extraction(filename: str):
         return JSONResponse(content={"message": "Extraction process started on ", "filename": filename}, status_code=200)
 
+async def main(filename: str):
+     await call_pdfdocintel(filename)
+
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5001)
+    print("Starting FastAPI server...")
+    #import uvicorn
+    #uvicorn.run(app, host="0.0.0.0", port=5001)
+    #import sys
+    #print(sys.path)
+    
+    
+    asyncio.run(main("AI_Risk_Management-NIST.AI.100-1.pdf"))
+    
+    
+    
+   

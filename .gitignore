@@ -22,6 +22,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-/backend/uploads/*
+backend/uploads/*
 backend/models/__pycache__/*
 backend/services/__pycache__/*
+backend/files/*
+backend/app.log
+backend/dist/*.whl
