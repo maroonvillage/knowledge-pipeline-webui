@@ -1,13 +1,10 @@
-import logo from './logo.svg';
 import './App.css';
-import ExtractionComponent from './components/ExtractionComponent';
 import DocumentIngestionOptions from './components/DocumentIngestionOptions'
 //import Dashboard from './dashboard/Dashboard'
 import Mydashboard from './components/Mydashboard';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, AppBar } from '@mui/material';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DashboardIcon from '@mui/icons-material/Dashboard';
+import FileDetail from './components/FileDetail';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Box, Toolbar } from '@mui/material';
 
 
 function App() {
@@ -23,6 +20,7 @@ function App() {
                  <DocumentIngestionOptions />
                </Box>
             } />
+            <Route path="/file/:filename" element={<FileDetail />} />
            </Routes>
         </Box>
       </Box>

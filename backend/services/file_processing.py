@@ -25,6 +25,11 @@ async def get_file_metadata(filename:str) -> FileMetadata:
     file_date = os.path.getctime(filename)
     return FileMetadata(filename=filename, size=file_size, time=file_date)
 
+async def check_file(filename:str) -> bool:
+    
+    return os.path.exists(filename)
+
+
 async def get_files_from_dir(directory,extension='.json'):
 
     files =  os.listdir(directory)

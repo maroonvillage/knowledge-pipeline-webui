@@ -6,7 +6,7 @@ import os
 from typing import Dict, Any, List
 from fastapi.middleware.cors import CORSMiddleware
 from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel, \
-    get_file_metadata
+    get_file_metadata, check_file
 from models.file_metadata import FileMetadata
 
 #import pdfdocintel as pdf
@@ -30,6 +30,7 @@ app.add_middleware(
 
 
 UPLOAD_FOLDER = "./files/uploads"
+PROCESSED_FOLDER = "./files/output/processed"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -65,9 +66,32 @@ async def get_files():
         id += 1
         files_list.append(file_data)
     return files_list
-    #return JSONResponse(content={files_list})
-    #return JSONResponse(content={"message": f"File Metatdata - There are {len(files_from_dir)} file(s) in the uploads folder."}, status_code=200)
 
+@app.get("/get_file/{filename}", response_model=FileMetadata)
+async def get_file(filename: str):
+    
+    try:
+        #Make call to the service layer to check 'processed' folder
+        #if a file is present that corresponds to the filename clicked in the UI
+        #  display details related to the file
+        # if not, display a button to start the extraction process
+        process_file = os.path.join(PROCESSED_FOLDER, filename)
+        if(await check_file(process_file)):
+            full_path = os.path.join(UPLOAD_FOLDER, filename)
+            fm = await get_file_metadata(full_path)
+            # Convert creation time to a human-readable date
+            creation_date = datetime.datetime.fromtimestamp(fm.time)
+            fm.found = True
+            return fm
+        else:
+            return FileMetadata(filename=filename, size=0, time=0)
+        
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found") 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/")
 async def start_extraction(filename: str):
