@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 import os
 from typing import Dict, Any, List
 from fastapi.middleware.cors import CORSMiddleware
-from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel, \
+from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel_extraction, \
     get_file_metadata, check_file
 from models.file_metadata import FileMetadata
 
@@ -93,12 +93,13 @@ async def get_file(filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/")
+@app.post("/extract/{filename}")
 async def start_extraction(filename: str):
-        return JSONResponse(content={"message": "Extraction process started on ", "filename": filename}, status_code=200)
+        #return JSONResponse(content={"message": "Extraction process started on ", "filename": filename}, status_code=200)
+        await call_pdfdocintel_extraction(filename)
 
 async def main(filename: str):
-     await call_pdfdocintel(filename)
+     await call_pdfdocintel_extraction(filename)
 
 
 if __name__ == "__main__":

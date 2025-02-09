@@ -43,7 +43,7 @@ async def get_files_from_dir(directory,extension='.json'):
     return filtered_files
 
 
-async def call_pdfdocintel(filename:str):
+async def call_pdfdocintel_extraction(filename:str):
     
         #parm_config = ParmConfig()
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
