@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Typography, Box, CircularProgress,Button } from '@mui/material';
+import { useParams } from 'react-router-dom';
+import { Typography, Box, CircularProgress,Button, Grid2 } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 
 function FileDetail() {
     const { filename } = useParams();
     const [file, setFile] = useState(null);
+    const [sections, setSections] = useState([]);
+    const [tables, setTables] = useState([]);
+    const [keywords, setKeywords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [extracting, setExtracting] = useState(false);
@@ -19,6 +23,25 @@ function FileDetail() {
                 }
                 const data = await response.json();
                 setFile(data);
+
+
+                                // Fetch additional data if the file is found
+                if (data.found) {
+                    const sectionsResponse = await fetch(`http://localhost:5001/get_sections/${filename}`);
+                    const tablesResponse = await fetch(`http://localhost:5001/get_tables/${filename}`);
+                    const keywordsResponse = await fetch(`http://localhost:5001/get_keywords/${filename}`);
+
+                    const [sectionsData, tablesData, keywordsData] = await Promise.all([
+                        sectionsResponse.ok ? sectionsResponse.json() : Promise.resolve([]),
+                        tablesResponse.ok ? tablesResponse.json() : Promise.resolve([]),
+                        keywordsResponse.ok ? keywordsResponse.json() : Promise.resolve([]),
+                    ]);
+
+                    setSections(sectionsData);
+                    setTables(tablesData);
+                    setKeywords(keywordsData);
+                }
+
             } catch (error) {
                 setError(error);
             } finally {
@@ -53,6 +76,22 @@ function FileDetail() {
           }
       };
 
+    const sectionsColumns = [
+        { field: 'sectionTitle', headerName: 'Section Title', width: 300 },
+        { field: 'sectionContent', headerName: 'Section Content', width: 600 },
+    ];
+
+    const tablesColumns = [
+        { field: 'tableTitle', headerName: 'Table Title', width: 300 },
+        { field: 'columns', headerName: 'Columns', width: 150 },
+        { field: 'rows', headerName: 'Rows', width: 150 },
+    ];
+
+    const keywordsColumns = [
+        { field: 'keyword', headerName: 'Keyword', width: 200 },
+        { field: 'relevantContent', headerName: 'Relevant Content', width: 600 },
+    ];
+
     if (loading) {
         return <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px"><CircularProgress /></Box>;
     }
@@ -71,6 +110,38 @@ function FileDetail() {
                       <Typography>Size: {file.size} bytes</Typography>
                       <Typography>Upload Date: {file.time}</Typography>
                        {/* Add more details and action buttons here */}
+                       <Grid2 container spacing={2}>
+                            <Grid2 item xs={12} md={4}>
+                                <Typography variant="h6">Sections</Typography>
+                                <div style={{ height: 300, width: '100%' }}>
+                                    <DataGrid
+                                        rows={sections}
+                                        columns={sectionsColumns}
+                                        getRowId={(row) => row.sectionTitle}  // Adjust to a unique identifier
+                                    />
+                                </div>
+                            </Grid2>
+                            <Grid2 item xs={12} md={4}>
+                                <Typography variant="h6">Tables</Typography>
+                                <div style={{ height: 300, width: '100%' }}>
+                                    <DataGrid
+                                        rows={tables}
+                                        columns={tablesColumns}
+                                        getRowId={(row) => row.tableTitle}  // Adjust to a unique identifier
+                                    />
+                                </div>
+                            </Grid2>
+                            <Grid2 item xs={12} md={4}>
+                                <Typography variant="h6">Keyword Query Results</Typography>
+                                <div style={{ height: 300, width: '100%' }}>
+                                    <DataGrid
+                                        rows={keywords}
+                                        columns={keywordsColumns}
+                                        getRowId={(row) => row.keyword}  // Adjust to a unique identifier
+                                    />
+                                </div>
+                            </Grid2>
+                        </Grid2>
                   </>
                 ) : (
                     <Box>

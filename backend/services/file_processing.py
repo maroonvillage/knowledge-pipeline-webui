@@ -2,7 +2,6 @@
 import os
 from fastapi import UploadFile
 from models.file_metadata import FileMetadata
-from typing import List
 
 from pdfdocintel import main, ParmConfig;
 
@@ -29,7 +28,6 @@ async def check_file(filename:str) -> bool:
     
     return os.path.exists(filename)
 
-
 async def get_files_from_dir(directory,extension='.json'):
 
     files =  os.listdir(directory)
@@ -41,7 +39,6 @@ async def get_files_from_dir(directory,extension='.json'):
         filtered_files = [f for f in files]
 
     return filtered_files
-
 
 async def call_pdfdocintel_extraction(filename:str):
     

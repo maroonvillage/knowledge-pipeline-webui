@@ -2,13 +2,17 @@ import asyncio
 import datetime
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
+import json
 import os
-from typing import Dict, Any, List
+from pydantic import BaseModel
+from typing import Any, List
 from fastapi.middleware.cors import CORSMiddleware
 from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel_extraction, \
     get_file_metadata, check_file
 from models.file_metadata import FileMetadata
-
+from models.section import Section
+from models.table import Table
+from models.keyword_query_result import KeywordQueryResult
 #import pdfdocintel as pdf
 
 
@@ -34,6 +38,22 @@ PROCESSED_FOLDER = "./files/output/processed"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+
+
+def load_mock_data(filename: str, data_model: BaseModel):
+    """Loads mock data from a JSON file."""
+    try:
+        with open(f"files/output/{filename}", 'r') as f:
+           data = json.load(f)
+           return [data_model(**item) for item in data]
+    except FileNotFoundError:
+        return []  # Return an empty list if file is not found
+    except Exception as e:
+        print(f"Error loading {filename}: {e}")
+        return []  # Return an empty list if there is an error loading.
+    
+    
+    
 
 @app.post("/upload", response_model = FileMetadata)
 async def upload_file(file: UploadFile = File(...)):
@@ -97,6 +117,27 @@ async def get_file(filename: str):
 async def start_extraction(filename: str):
         #return JSONResponse(content={"message": "Extraction process started on ", "filename": filename}, status_code=200)
         await call_pdfdocintel_extraction(filename)
+
+@app.get("/get_sections/{filename}", response_model=List[Section])
+async def get_sections(filename: str):
+    # Simulate a delay for the sake of example
+    await asyncio.sleep(1)
+    return load_mock_data("sections.json", Section)
+
+@app.get("/get_tables/{filename}", response_model=List[Table])
+async def get_tables(filename: str):
+    # Simulate a delay for the sake of example
+    await asyncio.sleep(1)
+    return load_mock_data("tables.json", Table)
+
+
+@app.get("/get_keywords/{filename}", response_model=List[KeywordQueryResult])
+async def get_keywords(filename: str):
+    # Simulate a delay for the sake of example
+    await asyncio.sleep(1)
+    return load_mock_data("keywords.json", KeywordQueryResult)
+
+
 
 async def main(filename: str):
      await call_pdfdocintel_extraction(filename)
