@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Typography, Box, CircularProgress,Button, Grid2 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import logger from '../utils/logger'; // Import the logger
 
 function FileDetail() {
     const { filename } = useParams();
@@ -13,6 +14,7 @@ function FileDetail() {
     const [error, setError] = useState(null);
     const [extracting, setExtracting] = useState(false);
     const [extractionStatus, setExtractionStatus] = useState('');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -25,11 +27,11 @@ function FileDetail() {
                 setFile(data);
 
 
-                                // Fetch additional data if the file is found
+                // Fetch additional data if the file is found
                 if (data.found) {
-                    const sectionsResponse = await fetch(`http://localhost:5001/get_sections/${filename}`);
-                    const tablesResponse = await fetch(`http://localhost:5001/get_tables/${filename}`);
-                    const keywordsResponse = await fetch(`http://localhost:5001/get_keywords/${filename}`);
+                    const sectionsResponse = await fetch(`http://localhost:5001/sections/${filename}`);
+                    const tablesResponse = await fetch(`http://localhost:5001/tables/${filename}`);
+                    const keywordsResponse = await fetch(`http://localhost:5001/query_results/${filename}`);
 
                     const [sectionsData, tablesData, keywordsData] = await Promise.all([
                         sectionsResponse.ok ? sectionsResponse.json() : Promise.resolve([]),
@@ -50,12 +52,13 @@ function FileDetail() {
         };
 
         fetchData();
-    }, [filename]);
+    }, [filename, extractionStatus]);
 
     const handleStartExtraction = async () => {
         setExtracting(true);
          setExtractionStatus("Starting Extraction...");
           try {
+              logger.debug(filename)
               const response = await fetch(`http://localhost:5001/extract/${filename}`, {
                   method: 'POST',
               });
@@ -91,6 +94,10 @@ function FileDetail() {
         { field: 'keyword', headerName: 'Keyword', width: 200 },
         { field: 'relevantContent', headerName: 'Relevant Content', width: 600 },
     ];
+
+    const handleReload = () => {
+        navigate(0); // Reload the current page
+     };
 
     if (loading) {
         return <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px"><CircularProgress /></Box>;
@@ -149,7 +156,15 @@ function FileDetail() {
                         <Button variant="contained" color="primary" onClick={handleStartExtraction} disabled={extracting}>
                             {extracting ? 'Extracting...' : 'Start Extraction'}
                         </Button>
-                        {extractionStatus && <Typography variant="body2">{extractionStatus}</Typography>}
+                        {extractionStatus &&
+                            <Box>
+                                <Typography variant="body2">{extractionStatus}</Typography>
+                                {extractionStatus.startsWith('Extraction Complete') && (
+                                    <Button variant="contained" color="primary" onClick={handleReload}>
+                                        Reload Page
+                                    </Button>
+                                )}
+                            </Box>}
                     </Box>
                 )
             ) : (

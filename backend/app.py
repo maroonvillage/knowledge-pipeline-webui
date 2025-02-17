@@ -9,11 +9,12 @@ from typing import Any, List
 from fastapi.middleware.cors import CORSMiddleware
 from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel_extraction, \
     get_file_metadata, check_file
+from services.data_service import get_document_sections, get_keyword_query_results, get_document_tables
 from models.file_metadata import FileMetadata
 from models.section import Section
 from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
-#import pdfdocintel as pdf
+from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric
 
 
 app = FastAPI()
@@ -32,9 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+JSON_FOLDER = "./files/output/json"
 UPLOAD_FOLDER = "./files/uploads"
 PROCESSED_FOLDER = "./files/output/processed"
+QRY_RESULTS_FOLDER = "./files/output/query_results"
+
+PROCESSED_EXT = ".processed"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -95,7 +99,8 @@ async def get_file(filename: str):
         #if a file is present that corresponds to the filename clicked in the UI
         #  display details related to the file
         # if not, display a button to start the extraction process
-        process_file = os.path.join(PROCESSED_FOLDER, filename)
+        file_name, extension = os.path.splitext(filename)
+        process_file = os.path.join(PROCESSED_FOLDER, f'{file_name}{PROCESSED_EXT}')
         if(await check_file(process_file)):
             full_path = os.path.join(UPLOAD_FOLDER, filename)
             fm = await get_file_metadata(full_path)
@@ -117,25 +122,44 @@ async def get_file(filename: str):
 async def start_extraction(filename: str):
         #return JSONResponse(content={"message": "Extraction process started on ", "filename": filename}, status_code=200)
         await call_pdfdocintel_extraction(filename)
+        
+        return '{"message": "Extraction completed successfully"}'
 
-@app.get("/get_sections/{filename}", response_model=List[Section])
+@app.get("/sections/{filename}", response_model=List[Section])
 async def get_sections(filename: str):
-    # Simulate a delay for the sake of example
-    await asyncio.sleep(1)
-    return load_mock_data("sections.json", Section)
+    
+    #await asyncio.sleep(1)
+    #return load_mock_data("sections.json", Section)
+    fn = os.path.basename(filename) #get just file name from path
+    name, extention = os.path.splitext(fn) # get just file name without extension
+    fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
+    fn = find_file_by_prefix(JSON_FOLDER, f'{fn}_pdf_content')
 
-@app.get("/get_tables/{filename}", response_model=List[Table])
+    return await get_document_sections(fn)
+
+@app.get("/tables/{filename}", response_model=List[Table])
 async def get_tables(filename: str):
-    # Simulate a delay for the sake of example
-    await asyncio.sleep(1)
-    return load_mock_data("tables.json", Table)
+    print(f'in get_tables {filename}')
+    fn = os.path.basename(filename) #get just file name from path
+    name, extention = os.path.splitext(fn) # get just file name without extension
+    fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
+    fn = find_file_by_prefix(JSON_FOLDER, f'{fn}_tables')
+
+    return await get_document_tables(fn)
 
 
-@app.get("/get_keywords/{filename}", response_model=List[KeywordQueryResult])
-async def get_keywords(filename: str):
+@app.get("/query_results/{filename}", response_model=List[KeywordQueryResult])
+async def get_query_results(filename: str):
     # Simulate a delay for the sake of example
-    await asyncio.sleep(1)
-    return load_mock_data("keywords.json", KeywordQueryResult)
+    #await asyncio.sleep(1)
+    #return load_mock_data("keywords.json", KeywordQueryResult)
+    #folder = os.path.dirname(filename)
+    fn = os.path.basename(filename) #get just file name from path
+    name, extention = os.path.splitext(fn) # get just file name without extension
+    fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
+    prefix = f'{fn}_qry_results'
+
+    return await get_keyword_query_results(QRY_RESULTS_FOLDER,prefix)
 
 
 
