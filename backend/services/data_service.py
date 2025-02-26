@@ -42,7 +42,6 @@ async def get_document_sections(filename:str) -> List[str]:
         print(f"Error processing {filename}: {e}")
         return []
 
-
 async def get_document_tables(filename:str) -> List[str]:
     """
     Extracts table meta-data from a JSON file.
