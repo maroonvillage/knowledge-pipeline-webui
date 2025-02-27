@@ -78,7 +78,8 @@ async def call_pdfdocintel_extraction(filename:str):
     
     #parm_config = ParmConfig()
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
-                             csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results")
+                             csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results",
+                             processed_dir="processed", embeddings_dir="embeddings")
         
     # Load the PDF file
     main(filename,parm_config)
@@ -101,7 +102,7 @@ async def call_pdfdocintel_get_tables_file(pdf_filename: str, filename_segment: 
     #timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
     # Combine the base name, timestamp, and extension to form the file name
     #output_file = f"{pdf_prefix}{filename_segment}_{timestamp}.csv"
-    output_file = generate_filename(f"{pdf_prefix}{filename_segment}",extension="csv")
+    output_file = generate_filename(f"{pdf_prefix}{filename_segment}",timestamp=False, extension="csv")
     
     logger.debug(f'output file: {output_file}')
     
@@ -164,7 +165,7 @@ async def call_pdfdocintel_get_keywords_file(pdf_filename: str, filename_segment
     #timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
     # Combine the base name, timestamp, and extension to form the file name
     #output_file = f"{pdf_prefix}{filename_segment}_{timestamp}.csv"
-    output_file = generate_filename(f"{pdf_prefix}{filename_segment}",extension="csv")
+    output_file = generate_filename(f"{pdf_prefix}{filename_segment}",timestamp=False,extension="csv")
     # Create the full output path
     full_output_path = os.path.join(parm_config.get_output_csv_dir(), output_file)
     

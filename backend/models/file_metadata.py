@@ -5,4 +5,7 @@ class FileMetadata(BaseModel):
      filename: str
      size: int
      time: float
+     processed: bool = False
+     uploaded: bool = False
      found: bool = False
+     

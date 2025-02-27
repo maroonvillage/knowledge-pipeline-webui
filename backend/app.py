@@ -56,7 +56,7 @@ TABLES_DIR = os.path.join(DATA_FOLDER, "tables")
 if not os.path.exists(TABLES_DIR):
     os.makedirs(TABLES_DIR)
 
-KEYWORDS_DIR = os.path.join(DATA_FOLDER, "_qry_results")
+KEYWORDS_DIR = os.path.join(DATA_FOLDER, "query_results")
 if not os.path.exists(KEYWORDS_DIR):
     os.makedirs(KEYWORDS_DIR)
 
@@ -122,16 +122,21 @@ async def get_file(filename: str):
         #  display details related to the file
         # if not, display a button to start the extraction process
         file_name_wo_ext, extension = os.path.splitext(filename)
+        full_upload_path = os.path.join(UPLOAD_FOLDER, filename)
+        fm = await get_file_metadata(full_upload_path)
         processed_file = os.path.join(PROCESSED_FOLDER, f'{file_name_wo_ext}{PROCESSED_EXT}')
         if(await check_file(processed_file)):
-            full_path = os.path.join(UPLOAD_FOLDER, filename)
-            fm = await get_file_metadata(full_path)
             # Convert creation time to a human-readable date
             creation_date = datetime.datetime.fromtimestamp(fm.time)
+            fm.uploaded = True
             fm.found = True
-            return fm
+            fm.processed = True
         else:
-            return FileMetadata(filename=filename, size=0, time=0)
+            fm.uploaded = True
+            fm.found = True
+            fm.processed = False 
+                 
+        return fm
         
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found") 
@@ -215,28 +220,27 @@ async def get_query_results(filename: str):
 async def check_tables_file(filename: str):
     
     prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
-    filename_segment = f'{prefix}{FILENAME_SEGMENT_TABLES}'
-    for filename in os.listdir(CSV_FOLDER):
-        if(filename.startswith(filename_segment) and filename.endswith('.csv')):
-            return {"tables_file": filename}
-        
-        #raise HTTPException(status_code=404, detail="File does not exist")
-        
-    return {"tables_files": None}
+    tables_file_segment = f'{prefix}{FILENAME_SEGMENT_TABLES}'
+    tables_file = f'{tables_file_segment}.csv'
+    tables_file_path = os.path.join(CSV_FOLDER,tables_file)
+    print(f"check_tables_file {tables_file_path}")
+    if os.path.exists(tables_file_path):
+        return {"tables_file": tables_file}
+    else:
+        raise HTTPException(status_code=404, detail="File does not exist")
 
 @app.get("/check_keywords_file/{filename}")
 async def check_keywords_file(filename: str):
     
     prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
     filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
-    for filename in os.listdir(CSV_FOLDER):
-         if(filename.startswith(filename_segment) and filename.endswith('.csv')):
-            return {"keywords_file": filename}
-        
-         #raise HTTPException(status_code=404, detail="File does not exist")
-
-    #raise HTTPException(status_code=404, detail="Path does not exist")
-    return {"keywords_file": None}
+    keywords_file = f'{filename_segment}.csv'
+    keywords_file_path = os.path.join(CSV_FOLDER,keywords_file)
+    print(f"check_tables_file {keywords_file_path}")
+    if os.path.exists(keywords_file_path):
+        return {"keywords_file": keywords_file}
+    else:
+        raise HTTPException(status_code=404, detail="File does not exist")
 
 @app.post("/generate_tables_file/{filename}")
 async def generate_tables_file(filename: str):

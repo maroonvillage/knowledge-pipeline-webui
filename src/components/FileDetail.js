@@ -46,7 +46,7 @@ function FileDetail() {
 
 
                 // Fetch additional data if the file is found
-                if (data.found) {
+                if (data.processed) {
                     const sectionsResponse = await fetch(`http://localhost:5001/sections/${filename}`);
                     const tablesResponse = await fetch(`http://localhost:5001/tables/${filename}`);
                     const keywordsResponse = await fetch(`http://localhost:5001/query_results/${filename}`);
@@ -84,8 +84,8 @@ function FileDetail() {
                     }
                 }
                 else{
-                    //Set button visibility flag to false ...
-                    
+                    setTablesFileExists(false);
+                    setKeywordsFileExists(false);
                 }
 
             } catch (error) {
@@ -140,6 +140,8 @@ function FileDetail() {
             setError(error);
         } finally {
             setTablesFileGenerating(false);
+            // Need to trigger a re-render of the page to update the file listing
+            window.location.reload()
         }
     };
 
@@ -158,6 +160,8 @@ function FileDetail() {
             setError(error);
         } finally {
             setKeywordsFileGenerating(false);
+            // Need to trigger a re-render of the page to update the file listing
+            window.location.reload()
         }
     };
 
@@ -168,8 +172,13 @@ function FileDetail() {
               const response = await fetch(`http://localhost:5001/clear_data/${filename}`, {
                   method: 'POST',
               });
-  
-              if (!response.ok) {
+              
+              if (response.ok) {
+                const errorData = await response.json();
+                setExtractionStatus(`Clear data failed with error: ${errorData.error}`);
+                setTablesFileExists(false);
+                setKeywordsFileExists(false);
+            } else {
                   const errorData = await response.json();
                   setExtractionStatus(`Clear data failed with error: ${errorData.error}`);
                   throw new Error(`Extraction failed with status: ${response.status}`);
@@ -185,15 +194,19 @@ function FileDetail() {
     const handleOpenConfirmation = () => {
         setOpenConfirmation(true);
     };
-
     const handleCloseConfirmation = (confirmed) => {
         setOpenConfirmation(false);
         if (confirmed) {
+            setExtracting(true);
             // Call the extraction endpoint and update tables and keywords list.
             handleClearData();
             handleStartExtraction();
         }
     };
+
+    const handleReload = () => {
+        navigate(0); // Reload the current page
+     };
 
     const sectionsColumns = [
         { field: 'sectionTitle', headerName: 'Section Title', width: 300 },
@@ -211,10 +224,6 @@ function FileDetail() {
         { field: 'relevantContent', headerName: 'Relevant Content', width: 600 },
     ];
 
-    const handleReload = () => {
-        navigate(0); // Reload the current page
-     };
-
     if (loading) {
         return <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px"><CircularProgress /></Box>;
     }
@@ -227,7 +236,7 @@ function FileDetail() {
         <Box>
             <Typography variant="h4">File Details</Typography>
             {file ? (
-                file.found ? (
+                file.uploaded ? (
                     <>
                         <Typography>Filename: {file.filename}</Typography>
                         <Typography>Size: {file.size} bytes</Typography>
@@ -257,7 +266,7 @@ function FileDetail() {
                                     >
                                         {tablesFileGenerating ? 'Generating...' : 'Generate Tables File'}
                                     </Button>
-                                    {tablesFileExists && (
+                                    {tablesDownloadUrl && (
                                         <Button
                                             component="a"
                                             href={tablesDownloadUrl}
