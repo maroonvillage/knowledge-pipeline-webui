@@ -282,7 +282,9 @@ async def download_tables_file(filename: str):
         
     download_file = os.path.join(CSV_FOLDER, filename)
     if(os.path.isfile(download_file)):
-     return await get_file_metadata(download_file)
+        #return await get_file_metadata(download_file)
+        return FileResponse(download_file, filename=filename, media_type='text/csv')
+        #return JSONResponse(content={"message": f"File {download_file} successfully downloaded"}, status_code=200)
     else:
         raise HTTPException(status_code=404, detail="Tables file not found")      
             
@@ -300,7 +302,8 @@ async def download_keywords_file(filename: str):
                 
     download_file = os.path.join(CSV_FOLDER, filename)
     if(os.path.isfile(download_file)):
-     return await get_file_metadata(download_file)
+        #return await get_file_metadata(download_file)
+        return FileResponse(download_file, filename=filename, media_type='text/csv')
     else:        
         raise HTTPException(status_code=404, detail="Query results file not found")
 
