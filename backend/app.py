@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import json
 import os
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ from models.file_metadata import FileMetadata
 from models.section import Section
 from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
-from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric
+from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension
 
 
 app = FastAPI()
@@ -151,20 +151,21 @@ async def start_extraction(filename: str):
         
         await call_pdfdocintel_extraction(filename)
         
-        return '{"message": "Extraction completed successfully"}'
+        return JSONResponse(content={"message": "Extraction completed successfully!"}, status_code=200)
 
 @app.post("/clear_data/{filename}")
 async def clear_data(filename: str):
     try:
       #clear your output files here
       # For example you can delete all contents of the file to perform the extraction again from a blank slate.
-      print("Clearing data")
-      base_filename = os.path.splitext(filename)[0]
-      
+      print("Clearing data ...")
+      file_no_ext = get_filename_no_extension(filename)
+      #base_filename = os.path.splitext(filename)[0]
+      print(f"base_filename: {file_no_ext}")
       pdf_prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
         # Define patterns for files to delete
       files_to_delete = [
-            os.path.join(PROCESSED_FOLDER, f"{base_filename}{PROCESSED_EXT}")
+            os.path.join(PROCESSED_FOLDER, f"{file_no_ext}{PROCESSED_EXT}")
         ]
       
       patterns = [
@@ -175,7 +176,12 @@ async def clear_data(filename: str):
           TXT_FOLDER
           
       ]
+      print(f"Clearing data for {pdf_prefix} ...")
+      print(f'Patterns: {patterns}')
       await clear_files(pdf_prefix, files_to_delete, patterns)
+      
+      
+      return JSONResponse(content={"message": "Files cleared!"}, status_code=200)
       
     except Exception as e:
       raise HTTPException(status_code=500, detail="Error during data clearing")
@@ -306,7 +312,9 @@ if __name__ == "__main__":
     print("Starting FastAPI server...")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=5001)
-    # filename = './files/uploads/AI_Risk_Management-NIST.AI.100-1.pdf'
+    #filename = './files/uploads/ISO+IEC+23894-2023.pdf'
+    
+    #asyncio.run(clear_data(filename=filename))
     # prefix =  asyncio.run(get_filename_prefix(filename, FILE_PREFIX_LENGTH))
     # print(prefix)
     # filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'

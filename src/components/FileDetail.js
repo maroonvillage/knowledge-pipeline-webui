@@ -112,7 +112,7 @@ function FileDetail() {
   
               if (response.ok) {
                 const data = await response.json();
-                 setExtractionStatus(`Extraction Complete! ${data.message}`);
+                 setExtractionStatus(`${data.message}`);
               } else {
                    const errorData = await response.json();
                    setExtractionStatus(`Extraction failed with error: ${errorData.error}`);
@@ -167,15 +167,15 @@ function FileDetail() {
 
     const handleClearData = async () => {
         setExtracting(true);
-        setExtractionStatus("Clearing data");
+        setExtractionStatus("Clearing data ... ");
           try {
               const response = await fetch(`http://localhost:5001/clear_data/${filename}`, {
                   method: 'POST',
               });
               
               if (response.ok) {
-                const errorData = await response.json();
-                setExtractionStatus(`Clear data failed with error: ${errorData.error}`);
+                const data = await response.json();
+                setExtractionStatus(`${data.message}`);
                 setTablesFileExists(false);
                 setKeywordsFileExists(false);
             } else {
@@ -184,10 +184,10 @@ function FileDetail() {
                   throw new Error(`Extraction failed with status: ${response.status}`);
               }
           } catch (error) {
-               setError(error);
               setExtractionStatus(`Clear data failed with error: ${error.message}`);
+              setError(error);
           } finally {
-              setExtracting(false);
+              //setExtracting(false);
           }
      }
 
@@ -262,7 +262,7 @@ function FileDetail() {
                                         variant="contained"
                                         color="primary"
                                         onClick={handleGenerateTablesFile}
-                                        disabled={tablesFileGenerating || tablesFileExists}
+                                        disabled={tablesFileGenerating || tablesFileExists || extracting}
                                     >
                                         {tablesFileGenerating ? 'Generating...' : 'Generate Tables File'}
                                     </Button>
@@ -273,6 +273,7 @@ function FileDetail() {
                                             download
                                             variant="contained"
                                             color="success"
+                                            disabled={tablesFileGenerating || extracting}
                                         >
                                             Download Tables
                                         </Button>
@@ -293,7 +294,7 @@ function FileDetail() {
                                         variant="contained"
                                         color="primary"
                                         onClick={handleGenerateKeywordsFile}
-                                        disabled={keywordsFileGenerating || keywordsFileExists}
+                                        disabled={keywordsFileGenerating || keywordsFileExists || extracting}
                                     >
                                         {keywordsFileGenerating ? 'Generating...' : 'Generate Keywords File'}
                                     </Button>
@@ -304,6 +305,7 @@ function FileDetail() {
                                             download
                                             variant="contained"
                                             color="success"
+                                            disabled={tablesFileGenerating || extracting}
                                         >
                                             Download Keywords
                                         </Button>

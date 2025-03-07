@@ -55,16 +55,21 @@ async def clear_files(filename_prefix: str, files_to_delete: list, patterns: lis
     logger = Logger(__name__)
     try:
 
+        logger.info(f"Preparing to delete files in folders  with prefix {filename_prefix} ...")
         # Add a pattern for the table and keyword files to delete
-        # Loop through files in TABLES_DIR and KEYWORDS_DIR, deleting only those associated with filename
+        # Loop through files in TABLES_DIR and KEYWORDS_DIR, deleting only those associated with filenameS
         for directory in patterns:
             if(os.path.exists(directory)):
                 files =  os.listdir(directory)
                 for file in files:
                     if(file.startswith(filename_prefix)):
-                        if os.path.isfile(file):
-                            os.remove(file)
+                        full_path = os.path.join(directory, file)
+                        if os.path.isfile(full_path):
+                            logger.info(f'Deleting file: {file}')
+                            os.remove(full_path)
 
+        
+        logger.info(f"Preparing to delete specific files ... {files_to_delete}")
         # Delete specific files
         for file_path in files_to_delete:
              if os.path.exists(file_path) and os.path.isfile(file_path):
@@ -76,7 +81,6 @@ async def clear_files(filename_prefix: str, files_to_delete: list, patterns: lis
   
 async def call_pdfdocintel_extraction(filename:str):
     
-    #parm_config = ParmConfig()
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
                              csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results",
                              processed_dir="processed", embeddings_dir="embeddings")
