@@ -28,3 +28,14 @@ backend/services/__pycache__/*
 backend/files/*
 backend/app.log
 backend/dist/*.whl
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/.terraform/providers/registry.terraform.io/hashicorp/aws/5.90.1/darwin_amd64/terraform-provider-aws_v5.90.1_x5
+terraform/s3/.terraform.lock.hcl
+terraform/s3/terraform.tfstate
+.gitignore
+terraform/s3/terraform.tfstate.backup
+.gitignore
+terraform/.terraform/providers/registry.terraform.io/hashicorp/aws/5.90.1/darwin_amd64/LICENSE.txt
+terraform/s3/.terraform/providers/registry.terraform.io/hashicorp/aws/5.90.1/darwin_amd64/LICENSE.txt
+terraform/s3/.terraform/providers/registry.terraform.io/hashicorp/aws/5.90.1/darwin_amd64/terraform-provider-aws_v5.90.1_x5
