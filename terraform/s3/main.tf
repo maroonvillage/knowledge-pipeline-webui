@@ -6,6 +6,14 @@ terraform {
       version = "~> 5.0"  # Or the latest version
     }
   }
+  cloud {
+    # The name of your Terraform Cloud organization.
+    organization = "maroonvillage-hcp-organization"
+    # The name of the Terraform Cloud workspace to store Terraform state files in.
+    workspaces {
+        name = "pdfdocintel-cloud-monolith-terraform"
+    }
+ }
 }
 
 provider "aws" {
@@ -20,7 +28,7 @@ provider "aws" {
 #  S3 Bucket Configuration
 #-------------------------------------------------------------------------------
 
-resource "aws_s3_bucket" "example" {
+resource "aws_s3_bucket" "pdfdocintel" {
   bucket = "${var.company_name}bucket01"  # Replace with a globally unique bucket name. Consider using a random suffix for uniqueness.
   
 
