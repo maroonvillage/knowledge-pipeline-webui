@@ -7,15 +7,15 @@ import os
 from pydantic import BaseModel
 from typing import Any, List
 from fastapi.middleware.cors import CORSMiddleware
-from services.file_processing import process_file, get_files_from_dir, call_pdfdocintel_extraction, \
-    get_file_metadata, check_file, get_file_path, call_pdfdocintel_get_tables_file, \
-        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix
+from services.file_processing import process_file, call_pdfdocintel_extraction, \
+    get_file_metadata, check_file, call_pdfdocintel_get_tables_file, \
+        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3
 from services.data_service import get_document_sections, get_keyword_query_results, get_document_tables
 from models.file_metadata import FileMetadata
 from models.section import Section
 from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
-from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension
+from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE
 
 
 app = FastAPI()
@@ -95,19 +95,20 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.get("/get_files", response_model=List[Any])
 async def get_files():
-    files_from_dir = await get_files_from_dir(UPLOAD_FOLDER, extension='.pdf')
+    files_from_s3_bucket = await get_files_from_s3(FILE_STORAGE['cloud_config']['bucket_name'], extension='.pdf')
     files_list = []
     id = 1
-    for file in files_from_dir:
-        full_path = os.path.join(UPLOAD_FOLDER, file)
-        fm = await get_file_metadata(full_path)
+    for file in files_from_s3_bucket:
+        #full_path = os.path.join(UPLOAD_FOLDER, file)
+        #fm = await get_file_metadata(full_path)
         # Convert creation time to a human-readable date
-        creation_date = datetime.datetime.fromtimestamp(fm.time)
+        
+        #creation_date = datetime.datetime.fromtimestamp(fm.time)
         file_data = {
             "id": id,
-            "filename": os.path.basename(fm.filename),
-            "size": fm.size,
-            "time": creation_date
+            "filename": file['Key'],
+            "size": file['Size'],
+            "time": file['LastModified']
         }
         id += 1
         files_list.append(file_data)

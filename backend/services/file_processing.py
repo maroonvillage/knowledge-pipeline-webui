@@ -6,7 +6,8 @@ from fastapi import UploadFile
 from models.file_metadata import FileMetadata
 import datetime
 from pdfdocintel import main, ParmConfig, Logger, json_to_csv_table_layout,json_to_csv_with_max_score, \
-                            get_filename_no_extension,generate_filename, strip_non_alphanumeric;
+                            get_filename_no_extension,generate_filename, strip_non_alphanumeric, \
+                                list_s3_objects;
 
 
 async def process_file(file: UploadFile, upload_folder:str) -> FileMetadata:
@@ -43,6 +44,28 @@ async def get_files_from_dir(directory,extension='.json'):
 
     return filtered_files
 
+async def get_files_from_s3(bucket_name, prefix='', extension='.json'):
+    """
+    List files in an S3 bucket with a specific prefix and extension.
+    :param
+    - bucket_name: The name of the S3 bucket.
+    - prefix: The prefix to filter files by (optional).
+    - extension: The file extension to filter by (optional, default is '.json').
+    :return: A list of file names that match the prefix and extension.
+    """
+    # List all objects in the S3 bucket with the specified prefix
+    try:
+        files = list_s3_objects(bucket_name, prefix)
+        if not files:
+            return []
+
+        # Filter the list to include only files with the specified extension
+        filtered_files = [file for file in files if file['Key'].endswith(extension)]
+        
+        return filtered_files
+    except Exception as e:
+        raise e
+    
 async def get_file_path(directory, filename, prefix_length, segment, extension) -> str:
     """ DEPRECATED"""
     base_filename =  os.path.splitext(filename)[0]  # Remove the original extension
@@ -77,8 +100,7 @@ async def clear_files(filename_prefix: str, files_to_delete: list, patterns: lis
 
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e} when clearing files. Error: {e}")
-  
-  
+    
 async def call_pdfdocintel_extraction(filename:str):
     
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
