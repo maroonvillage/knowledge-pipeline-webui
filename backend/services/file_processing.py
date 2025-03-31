@@ -1,13 +1,12 @@
 # backend/services/file_processing.py
 import os, glob
-import shutil
 import json
 from fastapi import UploadFile
 from models.file_metadata import FileMetadata
-import datetime
+from typing import Dict, Any;
 from pdfdocintel import main, ParmConfig, Logger, json_to_csv_table_layout,json_to_csv_with_max_score, \
                             get_filename_no_extension,generate_filename, strip_non_alphanumeric, \
-                                list_s3_objects;
+                                list_s3_objects, get_s3_object_metadata;
 
 
 async def process_file(file: UploadFile, upload_folder:str) -> FileMetadata:
@@ -65,7 +64,27 @@ async def get_files_from_s3(bucket_name, prefix='', extension='.json'):
         return filtered_files
     except Exception as e:
         raise e
-    
+
+async def get_file_metadata_from_s3(bucket_name, key):
+    """
+    Get file metadata for files in an S3 bucket with a specific prefix and extension.
+    :param
+    - bucket_name: The name of the S3 bucket.
+    - prefix: The prefix to filter files by (optional).
+    - extension: The file extension to filter by (optional, default is '.json').
+    :return: A list of FileMetadata objects for files that match the prefix and extension.
+    """
+    try:
+        print(f"Getting metadata for file in S3 bucket: {bucket_name}, key: {key}")
+        file_metadata = await get_s3_object_metadata(bucket_name, key)
+        if not file_metadata:
+            return {}
+
+        return file_metadata
+    except Exception as e:
+        print(f"An error occurred while getting file metadata from S3: {e}")
+        raise e
+        
 async def get_file_path(directory, filename, prefix_length, segment, extension) -> str:
     """ DEPRECATED"""
     base_filename =  os.path.splitext(filename)[0]  # Remove the original extension

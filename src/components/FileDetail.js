@@ -37,7 +37,8 @@ function FileDetail() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch(`http://localhost:5001/get_file/${filename}`);
+                const encodedFileName = encodeURIComponent(filename);
+                const response = await fetch(`http://localhost:5001/get_file/${encodedFileName}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }

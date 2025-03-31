@@ -2,6 +2,7 @@ import asyncio
 import datetime
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
+from urllib.parse import unquote  # Import unquote
 import json
 import os
 from pydantic import BaseModel
@@ -9,13 +10,14 @@ from typing import Any, List
 from fastapi.middleware.cors import CORSMiddleware
 from services.file_processing import process_file, call_pdfdocintel_extraction, \
     get_file_metadata, check_file, call_pdfdocintel_get_tables_file, \
-        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3
+        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3
 from services.data_service import get_document_sections, get_keyword_query_results, get_document_tables
 from models.file_metadata import FileMetadata
 from models.section import Section
 from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
-from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE
+from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE, \
+    FILE_EXTENTION_PROCESSED
 
 
 app = FastAPI()
@@ -39,16 +41,16 @@ FILENAME_SEGMENT_QRY_RESULTS = "_qry_results"
 
 
 FILE_PREFIX_LENGTH = 0
-DATA_FOLDER = "./files/output"
-UPLOAD_FOLDER = "./files/uploads"
+DATA_FOLDER = "output/"
+UPLOAD_FOLDER = "uploads/"
 
 CSV_FOLDER = os.path.join(DATA_FOLDER,"csv")
 JSON_FOLDER = os.path.join(DATA_FOLDER,"json")
 
-PROCESSED_FOLDER = os.path.join(DATA_FOLDER,"processed")
-QRY_RESULTS_FOLDER = os.path.join(DATA_FOLDER,"query_results")
-EMBEDDINGS_FOLDER =  os.path.join(DATA_FOLDER,"embeddings")
-TXT_FOLDER = os.path.join(DATA_FOLDER,"text")
+PROCESSED_FOLDER = os.path.join(DATA_FOLDER,"processed/")
+QRY_RESULTS_FOLDER = os.path.join(DATA_FOLDER,"query_results/")
+EMBEDDINGS_FOLDER =  os.path.join(DATA_FOLDER,"embeddings/")
+TXT_FOLDER = os.path.join(DATA_FOLDER,"text/")
 
 
 
@@ -61,7 +63,6 @@ if not os.path.exists(KEYWORDS_DIR):
     os.makedirs(KEYWORDS_DIR)
 
 
-PROCESSED_EXT = ".processed"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -104,9 +105,14 @@ async def get_files():
         # Convert creation time to a human-readable date
         
         #creation_date = datetime.datetime.fromtimestamp(fm.time)
+        key = file['Key'] if 'Key' in file else None
+        if not key:
+            print(f"Skipping file with no key: {file}")
+            continue  # Skip files without a key
+
         file_data = {
             "id": id,
-            "filename": file['Key'],
+            "filename": file['Key'],  # S3 Key is the filename
             "size": file['Size'],
             "time": file['LastModified']
         }
@@ -114,28 +120,56 @@ async def get_files():
         files_list.append(file_data)
     return files_list
 
-@app.get("/get_file/{filename}", response_model=FileMetadata)
-async def get_file(filename: str):
+@app.get("/get_file/{filepath:path}", response_model=FileMetadata)
+async def get_file(filepath: str):
+    filename = unquote(filepath)  # Decode the filename
+    print(f"Received filename: {filename}") # Check the decoded filename
     
     try:
         #Make call to the service layer to check 'processed' folder
         #if a file is present that corresponds to the filename clicked in the UI
         #  display details related to the file
         # if not, display a button to start the extraction process
+        
         file_name_wo_ext, extension = os.path.splitext(filename)
-        full_upload_path = os.path.join(UPLOAD_FOLDER, filename)
-        fm = await get_file_metadata(full_upload_path)
-        processed_file = os.path.join(PROCESSED_FOLDER, f'{file_name_wo_ext}{PROCESSED_EXT}')
-        if(await check_file(processed_file)):
-            # Convert creation time to a human-readable date
-            creation_date = datetime.datetime.fromtimestamp(fm.time)
-            fm.uploaded = True
-            fm.found = True
-            fm.processed = True
+        #full_upload_path = os.path.join(UPLOAD_FOLDER, filename)
+        bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
+        metadata_dict = await get_file_metadata_from_s3(bucket_name,filename)
+        
+
+        if(metadata_dict):
+
+            fm = FileMetadata(
+                filename =  metadata_dict['Key'],  # S3 Key is the filename
+                size = metadata_dict['Size'],  # Size of the file in bytes
+                time = metadata_dict['LastModified'],  # Last modified time in timestamp format
+                processed = False,
+                uploaded = False,
+                found = False
+            )
+            metadata_dict = {}
+            processed_file = os.path.join(PROCESSED_FOLDER, f'{file_name_wo_ext}{FILE_EXTENTION_PROCESSED}')
+            metadata_dict = await get_file_metadata_from_s3(bucket_name,processed_file)
+            metadata_dict = None
+            
+            if(metadata_dict):
+                fm.uploaded = True
+                fm.found = True
+                fm.processed = True
+            else:
+                fm.uploaded = True
+                fm.found = True
+                fm.processed = False
         else:
-            fm.uploaded = True
-            fm.found = True
-            fm.processed = False 
+            # File not found in the upload folder
+            fm = FileMetadata(
+            filename = filename,
+            size = 0,
+            time = 0,
+            processed = False,
+            uploaded = False,
+            found = False
+            )
                  
         return fm
         
@@ -166,7 +200,7 @@ async def clear_data(filename: str):
       pdf_prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
         # Define patterns for files to delete
       files_to_delete = [
-            os.path.join(PROCESSED_FOLDER, f"{file_no_ext}{PROCESSED_EXT}")
+            os.path.join(PROCESSED_FOLDER, f"{file_no_ext}{FILE_EXTENTION_PROCESSED}")
         ]
       
       patterns = [
@@ -313,25 +347,40 @@ async def main(filename: str):
 
 
 if __name__ == "__main__":
-    print("Starting FastAPI server...")
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5001)
-    #filename = './files/uploads/ISO+IEC+23894-2023.pdf'
     
-    #asyncio.run(clear_data(filename=filename))
-    # prefix =  asyncio.run(get_filename_prefix(filename, FILE_PREFIX_LENGTH))
-    # print(prefix)
-    # filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
-    # print(filename_segment)
-    # for filename in os.listdir(CSV_FOLDER):
-    #      if(filename.startswith(filename_segment) and filename.endswith('.csv')):
-    #         print("file exists")
-    #         break
+    #async def main():
+        print("Starting FastAPI server...")
+        import uvicorn
+        uvicorn.run(app, host="0.0.0.0", port=5001)
+        #filename = './files/uploads/ISO+IEC+23894-2023.pdf'
         
-    #      print("file does NOT exist.")
-    #asyncio.run(main("AI_Risk_Management-NIST.AI.100-1.pdf"))
-
-
+        #asyncio.run(clear_data(filename=filename))
+        # prefix =  asyncio.run(get_filename_prefix(filename, FILE_PREFIX_LENGTH))
+        # print(prefix)
+        # filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
+        # print(filename_segment)
+        # for filename in os.listdir(CSV_FOLDER):
+        #      if(filename.startswith(filename_segment) and filename.endswith('.csv')):
+        #         print("file exists")
+        #         break
+            
+        #      print("file does NOT exist.")
+        #asyncio.run(main("AI_Risk_Management-NIST.AI.100-1.pdf"))
+        
+        # print(type(get_file_metadata_from_s3))
+        
+        
+    #     print(FILE_STORAGE['cloud_config']['bucket_name'])
+        #bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
+    #     metadata_dict = await get_file_metadata_from_s3('next9bucket01','uploads/AI_Risk_Management-NIST.AI.100-1.pdf')
+    #     if(metadata_dict):
+    #         if metadata_dict:
+    #             print(f"Retrieved metadata from S3: {json.dumps(metadata_dict, indent=2)}")
+    #             #print(f"Retrieved metadata from S3: {metadata_dict['Key']}")
+    #         else:
+    #             print(f"No metadata found for the key: uploads/AI_Risk_Management-NIST.AI.100-1.pdf in bucket: {FILE_STORAGE['cloud_config']['bucket_name']}")
+                
+    # asyncio.run(main())
     
     
     

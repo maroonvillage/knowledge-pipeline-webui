@@ -34,7 +34,7 @@ function FileListGrid() {
       const columns = [
         { field: 'filename', headerName: 'Document Title', flex: 1.5, minWidth: 200,
           renderCell: (params) => (
-              <Typography component={Link} to={`/file/${params.row.filename}`} variant="body2" sx={{ textDecoration: 'none', color: 'inherit' }}>
+              <Typography component={Link} to={`/file/${encodeURIComponent(params.row.filename)}`} variant="body2" sx={{ textDecoration: 'none', color: 'inherit' }}>
                   {params.value}
               </Typography>
           ), },
