@@ -1,9 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Button, Typography, Box, LinearProgress, Grid2 } from '@mui/material';
-import AppTheme from '../shared-theme/AppTheme';
-import CssBaseline from '@mui/material/CssBaseline';
-import AppNavbar from './_dashboard_components/AppNavbar';
-import SideMenu from './_dashboard_components/SideMenu';
+import { Button, Typography, LinearProgress, Grid2 } from '@mui/material';
 
 function DocumentIngestionOptions() {
     const fileInputRef = useRef(null);
@@ -58,44 +54,40 @@ const handleUpload = async () => {
 
 };
 
-    return (
-        <AppTheme>
-        <CssBaseline enableColorScheme />
-       
-        <Box sx={{ flexGrow: 1}}>
-        <SideMenu />
-        <AppNavbar />
-       <Grid2 container direction="column" spacing={2} justifyContent="center" alignItems="center">
-          <Grid2 item>
-            <Typography variant="h6" component="h2">
-              Ingest Document
-            </Typography>
-         </Grid2>
-         <Grid2 item>
-           <Button variant="contained" color="primary" onClick={handleLocalFileUpload}>
-               Select from local computer
-           </Button>
-         </Grid2>
-         <input
-             type="file"
-             ref={fileInputRef}
-             style={{display: 'none'}}
-             onChange={handleFileSelected}
-         />
-         <Grid2 item>
-              {file && <Typography variant="body2">Selected File: {file.name}</Typography>}
-        </Grid2>
-         <Grid2 item>
-            <Button variant="contained" color="secondary" onClick={handleUpload} disabled={uploading}>
-                 {uploading ? 'Uploading...' : 'Upload File'}
-             </Button>
-          </Grid2>
-           {uploading &&  <Grid2 item> <LinearProgress /> </Grid2>}
-           {uploadStatus &&  <Grid2 item> <Typography variant="body2">{uploadStatus}</Typography></Grid2>}
+return (
+    // Removed AppTheme, CssBaseline, SideMenu, AppNavbar wrappers
+    // The outermost Box might be unnecessary if MainLayout handles padding
+    // Use standard Grid for simple layouts unless Grid2 features are required
+     <Grid2 container direction="column" spacing={2} justifyContent="center" alignItems="center" sx={{pt: 4}}> {/* Added Padding Top */}
+       <Grid2 item>
+         <Typography variant="h6" component="h2">
+           Ingest Document
+         </Typography>
+      </Grid2>
+      <Grid2 item>
+        <Button variant="contained" color="primary" onClick={handleLocalFileUpload}>
+            Select from local computer
+        </Button>
+      </Grid2>
+      <input
+          type="file"
+          ref={fileInputRef}
+          style={{display: 'none'}}
+          onChange={handleFileSelected}
+          accept=".pdf" // Specify accepted file types
+      />
+      <Grid2 item sx={{ minHeight: '24px' }}> {/* Reserve space for file name */}
+           {file && <Typography variant="body2">Selected File: {file.name}</Typography>}
+     </Grid2>
+      <Grid2 item>
+         <Button variant="contained" color="secondary" onClick={handleUpload} disabled={uploading || !file}>
+              {uploading ? 'Uploading...' : 'Upload File'}
+          </Button>
        </Grid2>
-  </Box>
-        </AppTheme>
-    );
+        {uploading && <Grid2 item sx={{width: '80%', maxWidth: '400px'}}> <LinearProgress /> </Grid2>}
+        {uploadStatus && <Grid2 item> <Typography variant="body2" color={uploadStatus.includes('failed') || uploadStatus.includes('error') ? 'error' : 'textSecondary'}>{uploadStatus}</Typography></Grid2>}
+    </Grid2>
+ );
 }
 
 export default DocumentIngestionOptions;

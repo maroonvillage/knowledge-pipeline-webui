@@ -1,19 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+// src/components/FileDetail.js (MODIFIED)
+import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import { useParams, useNavigate } from 'react-router-dom'; // Removed Link for now
 import {
     Typography,
     Box,
     CircularProgress,
     Button,
-    Grid2,
     Dialog,
     DialogActions,
     DialogContent,
     DialogContentText,
-    DialogTitle
+    DialogTitle,
+    List, // For Side Nav
+    ListItem, // For Side Nav
+    ListItemButton, // For Side Nav
+    ListItemText, // For Side Nav
+    Paper, // To contain the side nav
+    Divider // To separate nav items
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import logger from '../utils/logger'; // Import the logger
+
+// Define views
+const VIEWS = {
+    OVERVIEW: 'Overview',
+    SECTIONS: 'Sections',
+    TABLES: 'Tables',
+    KEYWORDS: 'Keywords',
+};
 
 function FileDetail() {
     const { filename } = useParams();
@@ -28,344 +42,445 @@ function FileDetail() {
     const navigate = useNavigate();
     const [tablesFileGenerating, setTablesFileGenerating] = useState(false);
     const [keywordsFileGenerating, setKeywordsFileGenerating] = useState(false);
-    const [tablesFileExists, setTablesFileExists] = useState(false);
-    const [keywordsFileExists, setKeywordsFileExists] = useState(false);
-    const [openConfirmation, setOpenConfirmation] = useState(false);
     const [tablesDownloadUrl, setTablesDownloadUrl] = useState(null);
     const [keywordsDownloadUrl, setKeywordsDownloadUrl] = useState(null);
+    const [openConfirmation, setOpenConfirmation] = useState(false);
+    const [activeView, setActiveView] = useState(VIEWS.OVERVIEW); // State for active view
 
+    // --- Data Fetching (Modified slightly for efficiency) ---
     useEffect(() => {
+        let isMounted = true; // Prevent state updates on unmounted component
         const fetchData = async () => {
+            setLoading(true);
+            setError(null); // Reset error on new fetch
+            setExtractionStatus(''); // Reset status
+
             try {
                 const encodedFileName = encodeURIComponent(filename);
-                const response = await fetch(`http://localhost:5001/get_file/${encodedFileName}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                setFile(data);
+                const fileResponse = await fetch(`http://localhost:5001/get_file/${encodedFileName}`);
+                if (!fileResponse.ok) throw new Error(`HTTP error! status: ${fileResponse.status}`);
+                const fileData = await fileResponse.json();
 
+                if (!isMounted) return;
+                setFile(fileData);
 
-                // Fetch additional data if the file is found
-                if (data.processed) {
-                    const sectionsResponse = await fetch(`http://localhost:5001/sections/${filename}`);
-                    const tablesResponse = await fetch(`http://localhost:5001/tables/${filename}`);
-                    const keywordsResponse = await fetch(`http://localhost:5001/query_results/${filename}`);
-
-                    const [sectionsData, tablesData, keywordsData] = await Promise.all([
-                        sectionsResponse.ok ? sectionsResponse.json() : Promise.resolve([]),
-                        tablesResponse.ok ? tablesResponse.json() : Promise.resolve([]),
-                        keywordsResponse.ok ? keywordsResponse.json() : Promise.resolve([]),
+                if (fileData?.processed) {
+                    // Fetch details only if processed
+                    const [sectionsRes, tablesRes, keywordsRes, tablesCheckRes, keywordsCheckRes] = await Promise.allSettled([
+                        fetch(`http://localhost:5001/sections/${encodedFileName}`),
+                        fetch(`http://localhost:5001/tables/${encodedFileName}`),
+                        fetch(`http://localhost:5001/query_results/${encodedFileName}`),
+                        fetch(`http://localhost:5001/check_tables_file/${encodedFileName}`),
+                        fetch(`http://localhost:5001/check_keywords_file/${encodedFileName}`),
                     ]);
 
-                    setSections(sectionsData);
-                    setTables(tablesData);
-                    setKeywords(keywordsData);
+                    if (!isMounted) return;
 
+                    setSections(sectionsRes.status === 'fulfilled' && sectionsRes.value.ok ? await sectionsRes.value.json() : []);
+                    setTables(tablesRes.status === 'fulfilled' && tablesRes.value.ok ? await tablesRes.value.json() : []);
+                    setKeywords(keywordsRes.status === 'fulfilled' && keywordsRes.value.ok ? await keywordsRes.value.json() : []);
 
-                    // Check if the files already exist by making a get call to the api
-                    const checkTablesFile = await fetch(`http://localhost:5001/check_tables_file/${filename}`);
-                    if (checkTablesFile.ok) {
-                       const checkTablesFileData = await checkTablesFile.json(); // Parse JSON here
-                       setTablesFileExists(true);
-                       setTablesDownloadUrl(`http://localhost:5001/download/tables/${checkTablesFileData.tables_file}`);
+                    if (tablesCheckRes.status === 'fulfilled' && tablesCheckRes.value.ok) {
+                        const data = await tablesCheckRes.value.json();
+                        setTablesDownloadUrl(`http://localhost:5001/download/tables/${data.tables_file}`);
                     } else {
-                       setTablesFileExists(false);
-                       setTablesDownloadUrl(null);
+                        setTablesDownloadUrl(null);
                     }
 
-                    const checkKeywordsFile = await fetch(`http://localhost:5001/check_keywords_file/${filename}`);
-                    if (checkKeywordsFile.ok) {
-                       const checkKeywordsFileData = await checkKeywordsFile.json(); // Parse JSON here
-                       setKeywordsFileExists(true);
-                       setKeywordsDownloadUrl(`http://localhost:5001/download/keywords/${checkKeywordsFileData.keywords_file}`);
+                    if (keywordsCheckRes.status === 'fulfilled' && keywordsCheckRes.value.ok) {
+                        const data = await keywordsCheckRes.value.json();
+                        setKeywordsDownloadUrl(`http://localhost:5001/download/keywords/${data.keywords_file}`);
                     } else {
-                       setKeywordsFileExists(false);
-                       setKeywordsDownloadUrl(null);
+                        setKeywordsDownloadUrl(null);
                     }
-                }
-                else{
-                    setTablesFileExists(false);
-                    setKeywordsFileExists(false);
+
+                } else {
+                    // Reset if not processed
+                    setSections([]);
+                    setTables([]);
+                    setKeywords([]);
+                    setTablesDownloadUrl(null);
+                    setKeywordsDownloadUrl(null);
                 }
 
-            } catch (error) {
-                setError(error);
+            } catch (err) {
+                if (isMounted) setError(err);
+                logger.error("Failed to fetch file details:", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
         fetchData();
-    }, [filename, extractionStatus, tablesFileExists, keywordsFileExists]);
 
-    /*
-    Handlers
-    */
+        return () => { isMounted = false; }; // Cleanup function
+    }, [filename]); // Rerun only when filename changes
+
+    // Re-check file status after actions instead of full page reload
+    const refreshFileStatus = async () => {
+         try {
+            const encodedFileName = encodeURIComponent(filename);
+             const [tablesCheckRes, keywordsCheckRes] = await Promise.allSettled([
+                 fetch(`http://localhost:5001/check_tables_file/${encodedFileName}`),
+                 fetch(`http://localhost:5001/check_keywords_file/${encodedFileName}`),
+             ]);
+
+             if (tablesCheckRes.status === 'fulfilled' && tablesCheckRes.value.ok) {
+                 const data = await tablesCheckRes.value.json();
+                 setTablesDownloadUrl(`http://localhost:5001/download/tables/${data.tables_file}`);
+             } else {
+                 setTablesDownloadUrl(null);
+             }
+
+             if (keywordsCheckRes.status === 'fulfilled' && keywordsCheckRes.value.ok) {
+                 const data = await keywordsCheckRes.value.json();
+                 setKeywordsDownloadUrl(`http://localhost:5001/download/keywords/${data.keywords_file}`);
+             } else {
+                 setKeywordsDownloadUrl(null);
+             }
+         } catch (err) {
+            logger.error("Failed to refresh file status:", err);
+            // Optionally set an error state here
+         }
+    }
+
+    // --- Handlers (Modified to refresh status instead of reload) ---
     const handleStartExtraction = async () => {
         setExtracting(true);
-         setExtractionStatus("Starting Extraction...");
-          try {
-              logger.debug(filename)
-              const response = await fetch(`http://localhost:5001/extract/${filename}`, {
-                  method: 'POST',
-              });
-  
-              if (response.ok) {
-                const data = await response.json();
-                 setExtractionStatus(`${data.message}`);
-              } else {
-                   const errorData = await response.json();
-                   setExtractionStatus(`Extraction failed with error: ${errorData.error}`);
-                  throw new Error(`Extraction failed with status: ${response.status}`);
-              }
-          } catch (error) {
-               setError(error);
-              setExtractionStatus(`Extraction failed with error: ${error.message}`);
-          } finally {
-              setExtracting(false);
-          }
-      };
-      const handleGenerateTablesFile = async () => {
-        setTablesFileGenerating(true);
+        setExtractionStatus("Starting Extraction...");
         try {
-            const response = await fetch(`http://localhost:5001/generate_tables_file/${filename}`, {
-                method: 'POST',
-            });
+            logger.debug(`Starting extraction for: ${filename}`);
+            const response = await fetch(`http://localhost:5001/extract/${encodeURIComponent(filename)}`, { method: 'POST' });
+
+            const data = await response.json(); // Read response body for both success/error
             if (response.ok) {
-                setTablesFileExists(true);
+                setExtractionStatus(`${data.message} - Refreshing data...`);
+                // Trigger a refetch of all data after extraction completes
+                 navigate(0); // Temporary: Keep reload until full state management is better
+                // TODO: Replace reload with a call to a function that refetches *all* data (file, sections, tables, keywords)
             } else {
-                throw new Error('Failed to generate tables file');
+                setExtractionStatus(`Extraction failed: ${data.error || response.statusText}`);
+                throw new Error(`Extraction failed: ${data.error || response.statusText}`);
             }
         } catch (error) {
             setError(error);
+            setExtractionStatus(`Extraction error: ${error.message}`);
+            logger.error("Extraction failed:", error);
+        } finally {
+            setExtracting(false);
+        }
+    };
+
+    const handleGenerateTablesFile = async () => {
+        setTablesFileGenerating(true);
+        setError(null);
+        try {
+            const response = await fetch(`http://localhost:5001/generate_tables_file/${encodeURIComponent(filename)}`, { method: 'POST' });
+            if (!response.ok) {
+                 const errorData = await response.json();
+                 throw new Error(errorData.error || 'Failed to generate tables file');
+            }
+            await refreshFileStatus(); // Refresh download link status
+        } catch (error) {
+            setError(error);
+            logger.error("Generate Tables File failed:", error);
         } finally {
             setTablesFileGenerating(false);
-            // Need to trigger a re-render of the page to update the file listing
-            window.location.reload()
         }
     };
 
     const handleGenerateKeywordsFile = async () => {
         setKeywordsFileGenerating(true);
+        setError(null);
         try {
-            const response = await fetch(`http://localhost:5001/generate_keywords_file/${filename}`, {
-                method: 'POST',
-            });
-            if (response.ok) {
-                setKeywordsFileExists(true);
-            } else {
-                throw new Error('Failed to generate keywords file');
-            }
+            const response = await fetch(`http://localhost:5001/generate_keywords_file/${encodeURIComponent(filename)}`, { method: 'POST' });
+             if (!response.ok) {
+                 const errorData = await response.json();
+                 throw new Error(errorData.error || 'Failed to generate keywords file');
+             }
+            await refreshFileStatus(); // Refresh download link status
         } catch (error) {
             setError(error);
+            logger.error("Generate Keywords File failed:", error);
         } finally {
             setKeywordsFileGenerating(false);
-            // Need to trigger a re-render of the page to update the file listing
-            window.location.reload()
         }
     };
 
     const handleClearData = async () => {
-        setExtracting(true);
-        setExtractionStatus("Clearing data ... ");
-          try {
-              const response = await fetch(`http://localhost:5001/clear_data/${filename}`, {
-                  method: 'POST',
-              });
-              
-              if (response.ok) {
-                const data = await response.json();
+        setExtracting(true); // Reuse extracting state for indication
+        setExtractionStatus("Clearing data...");
+        setError(null);
+        try {
+            const response = await fetch(`http://localhost:5001/clear_data/${encodeURIComponent(filename)}`, { method: 'POST' });
+            const data = await response.json();
+            if (response.ok) {
                 setExtractionStatus(`${data.message}`);
-                setTablesFileExists(false);
-                setKeywordsFileExists(false);
+                setSections([]); // Clear data locally
+                setTables([]);
+                setKeywords([]);
+                setTablesDownloadUrl(null);
+                setKeywordsDownloadUrl(null);
+                setFile(prev => prev ? { ...prev, processed: false } : null); // Mark as not processed
+                return true; // Indicate success
             } else {
-                  const errorData = await response.json();
-                  setExtractionStatus(`Clear data failed with error: ${errorData.error}`);
-                  throw new Error(`Extraction failed with status: ${response.status}`);
-              }
-          } catch (error) {
-              setExtractionStatus(`Clear data failed with error: ${error.message}`);
-              setError(error);
-          } finally {
-              //setExtracting(false);
-          }
-     }
-
-    const handleOpenConfirmation = () => {
-        setOpenConfirmation(true);
-    };
-    const handleCloseConfirmation = (confirmed) => {
-        setOpenConfirmation(false);
-        if (confirmed) {
-            setExtracting(true);
-            // Call the extraction endpoint and update tables and keywords list.
-            handleClearData();
-            handleStartExtraction();
+                setExtractionStatus(`Clear data failed: ${data.error || response.statusText}`);
+                throw new Error(`Clear data failed: ${data.error || response.statusText}`);
+            }
+        } catch (error) {
+            setError(error);
+            setExtractionStatus(`Clear data error: ${error.message}`);
+            logger.error("Clear data failed:", error);
+            return false; // Indicate failure
+        } finally {
+             // Don't set extracting to false here if called before handleStartExtraction
         }
     };
 
-    const handleReload = () => {
-        navigate(0); // Reload the current page
-     };
 
-    const sectionsColumns = [
-        { field: 'sectionTitle', headerName: 'Section Title', width: 300 },
-        { field: 'sectionContent', headerName: 'Section Content', width: 600 },
-    ];
+    const handleOpenConfirmation = () => setOpenConfirmation(true);
 
-    const tablesColumns = [
-        { field: 'tableTitle', headerName: 'Table Title', width: 300 },
-        { field: 'columns', headerName: 'Columns', width: 150 },
-        { field: 'rows', headerName: 'Rows', width: 150 },
-    ];
+    const handleCloseConfirmation = async (confirmed) => {
+        setOpenConfirmation(false);
+        if (confirmed) {
+            setExtracting(true); // Show loading indicator immediately
+            const cleared = await handleClearData();
+            if (cleared) {
+                // Only start extraction if clearing was successful
+                await handleStartExtraction();
+            } else {
+                // If clearing failed, stop the process
+                setExtracting(false);
+            }
+        }
+    };
 
-    const keywordsColumns = [
-        { field: 'keyword', headerName: 'Keyword', width: 200 },
-        { field: 'relevantContent', headerName: 'Relevant Content', width: 600 },
-    ];
+    // --- Columns Definition (Memoize for performance) ---
+    // IMPORTANT: Ensure your API provides unique IDs or generate stable ones.
+    // Using index as fallback here, but it's risky if data order changes.
+    const sectionsColumns = useMemo(() => [
+        { field: 'sectionTitle', headerName: 'Section Title', flex: 1, minWidth: 250 },
+        { field: 'sectionContent', headerName: 'Section Content', flex: 2, minWidth: 400 },
+    ], []);
 
+    const tablesColumns = useMemo(() => [
+        { field: 'tableTitle', headerName: 'Table Title', flex: 1, minWidth: 250 },
+        { field: 'columns', headerName: 'Columns', flex: 1, minWidth: 150 },
+        { field: 'rows', headerName: 'Rows', flex: 1, minWidth: 100, type: 'number' }, // Specify type if numeric
+    ], []);
+
+    const keywordsColumns = useMemo(() => [
+        { field: 'keyword', headerName: 'Keyword', flex: 1, minWidth: 150 },
+        { field: 'relevantContent', headerName: 'Relevant Content', flex: 3, minWidth: 400 },
+    ], []);
+
+    // --- Rendering Logic ---
     if (loading) {
         return <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px"><CircularProgress /></Box>;
     }
 
-    if (error) {
-        return <Typography color="error">Error: {error.message}</Typography>;
+    // Dedicated error display
+    if (error && !file) { // Show error prominently if file loading failed entirely
+        return <Typography color="error">Error loading file details: {error.message}</Typography>;
     }
 
+    // File not found or not uploaded state
+    if (!file?.uploaded) {
+         return (
+            <Box>
+                <Typography>File "{decodeURIComponent(filename)}" not found or not uploaded.</Typography>
+                {/* Consider linking back or to upload */}
+            </Box>
+         );
+    }
+
+    // Main component structure
     return (
-        <Box>
-            <Typography variant="h4">File Details</Typography>
-            {file ? (
-                file.uploaded ? (
-                    <>
+        <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}>
+            {/* Left Side Navigation */}
+            <Paper sx={{ width: 200, flexShrink: 0 }}>
+                <List dense> {/* dense makes items smaller */}
+                    {Object.values(VIEWS).map((view) => (
+                        <ListItem key={view} disablePadding>
+                            <ListItemButton
+                                selected={activeView === view}
+                                onClick={() => setActiveView(view)}
+                            >
+                                <ListItemText primary={view} />
+                            </ListItemButton>
+                        </ListItem>
+                    ))}
+                </List>
+            </Paper>
+
+            {/* Right Side Content Area */}
+            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+                 {/* Display general errors here */}
+                 {error && <Typography color="error" paragraph>Operation failed: {error.message}</Typography>}
+
+                {/* Overview Section */}
+                {activeView === VIEWS.OVERVIEW && (
+                    <Box>
+                        <Typography variant="h5" gutterBottom>Overview</Typography>
                         <Typography>Filename: {file.filename}</Typography>
                         <Typography>Size: {file.size} bytes</Typography>
-                        <Button variant="contained" color="secondary" onClick={handleOpenConfirmation} disabled={extracting}>
-                            {extracting ? 'Extracting...' : 'Start Extraction'}
-                        </Button>
+                        <Typography>Processed: {file.processed ? 'Yes' : 'No'}</Typography>
+                        <Typography>Last Modified: {file.time || 'N/A'}</Typography> {/* Assuming 'time' is last modified */}
+                        <Divider sx={{ my: 2 }} />
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                             <Button variant="contained" color="secondary" onClick={handleOpenConfirmation} disabled={extracting}>
+                                 {extracting ? 'Processing...' : (file.processed ? 'Re-Extract Data' : 'Start Extraction')}
+                             </Button>
+                             {/* Add clear button separately if needed */}
+                             {/* <Button variant="outlined" color="error" onClick={handleClearData} disabled={extracting || !file.processed}>
+                                Clear Processed Data
+                             </Button> */}
+                        </Box>
                         {extractionStatus && (
-                            <Box>
-                                <Typography variant="body2">{extractionStatus}</Typography>
-                                {extractionStatus.startsWith('Extraction Complete') && (
-                                    <Button variant="contained" color="primary" onClick={handleReload}>
-                                        Reload Page
-                                    </Button>
-                                )}
-                            </Box>
+                             <Typography variant="body2" sx={{ mt: 1, color: extractionStatus.includes('failed') || extractionStatus.includes('error') ? 'error.main' : 'text.secondary' }}>
+                                 Status: {extractionStatus}
+                             </Typography>
                         )}
-
-                        <Grid2 container spacing={2}>
-                            <Grid2 item xs={12} md={6}>
-                                <Box display="flex" justifyContent="space-between" alignItems="center">
-                                    <Typography variant="h6">Tables</Typography>
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={handleGenerateTablesFile}
-                                        disabled={tablesFileGenerating || tablesFileExists || extracting}
-                                    >
-                                        {tablesFileGenerating ? 'Generating...' : 'Generate Tables File'}
-                                    </Button>
-                                    {tablesDownloadUrl && (
-                                        <Button
-                                            component="a"
-                                            href={tablesDownloadUrl}
-                                            download
-                                            variant="contained"
-                                            color="success"
-                                            disabled={tablesFileGenerating || extracting}
-                                        >
-                                            Download Tables
-                                        </Button>
-                                    )}
-                                </Box>
-                                <div style={{ height: 300, width: '100%' }}>
-                                    <DataGrid
-                                        rows={tables}
-                                        columns={tablesColumns}
-                                        getRowId={(row) => row.tableTitle}  // Adjust to a unique identifier
-                                    />
-                                </div>
-                            </Grid2>
-                            <Grid2 item xs={12} md={6}>
-                                <Box display="flex" justifyContent="space-between" alignItems="center">
-                                    <Typography variant="h6">Keyword Query Results</Typography>
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={handleGenerateKeywordsFile}
-                                        disabled={keywordsFileGenerating || keywordsFileExists || extracting}
-                                    >
-                                        {keywordsFileGenerating ? 'Generating...' : 'Generate Keywords File'}
-                                    </Button>
-                                    {keywordsFileExists && (
-                                        <Button
-                                            component="a"
-                                            href={keywordsDownloadUrl}
-                                            download
-                                            variant="contained"
-                                            color="success"
-                                            disabled={tablesFileGenerating || extracting}
-                                        >
-                                            Download Keywords
-                                        </Button>
-                                    )}
-                                </Box>
-                                <div style={{ height: 300, width: '100%' }}>
-                                    <DataGrid
-                                        rows={keywords}
-                                        columns={keywordsColumns}
-                                        getRowId={(row) => row.keyword}  // Adjust to a unique identifier
-                                    />
-                                </div>
-                            </Grid2>
-                            <Grid2 item xs={12} md={6}>
-                                <Typography variant="h6">Sections</Typography>
-                                <div style={{ height: 300, width: '100%' }}>
-                                    <DataGrid
-                                        rows={sections}
-                                        columns={sectionsColumns}
-                                        getRowId={(row) => row.sectionTitle}  // Adjust to a unique identifier
-                                    />
-                                </div>
-                            </Grid2>
-                        </Grid2>
-                        <Dialog
-                            open={openConfirmation}
-                            onClose={() => handleCloseConfirmation(false)}
-                            aria-labelledby="alert-dialog-title"
-                            aria-describedby="alert-dialog-description"
-                        >
-                         <DialogTitle id="alert-dialog-title">
-                             {"Overwrite Existing Data?"}
-                         </DialogTitle>
-                         <DialogContent>
-                             <DialogContentText id="alert-dialog-description">
-                                 Are you sure you want to start extraction? All existing data for this file will be deleted.
-                             </DialogContentText>
-                         </DialogContent>
-                         <DialogActions>
-                             <Button onClick={() => handleCloseConfirmation(false)} color="primary">
-                                 No
-                             </Button>
-                             <Button onClick={() => handleCloseConfirmation(true)} color="primary" autoFocus>
-                                 Yes
-                             </Button>
-                         </DialogActions>
-                      </Dialog>
-                    </>
-                ) : (
-                    <Box>
-                        <Typography>File "{file.filename}" not found.</Typography>
-                        <Button component={Link} to="/upload" variant="contained" color="primary">
-                            Upload File
-                        </Button>
+                        {/* Display general file info and extraction controls */}
                     </Box>
-                )
-            ) : (
-                <Typography>No file information available.</Typography>
-            )}
+                )}
+
+                {/* Sections Grid */}
+                {activeView === VIEWS.SECTIONS && (
+                    <Box>
+                        <Typography variant="h6" gutterBottom>Sections</Typography>
+                         { !file.processed ? <Typography>Extract data first to view sections.</Typography> :
+                            <Box sx={{ height: 500, width: '100%' }}>
+                                <DataGrid
+                                    rows={sections}
+                                    columns={sectionsColumns}
+                                    getRowId={(row) => row.id || row.sectionTitle} // ** Use a real ID from API if available! **
+                                    density="compact"
+                                    pageSizeOptions={[10, 25, 50]}
+                                    initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                                />
+                             </Box>
+                         }
+                    </Box>
+                )}
+
+                {/* Tables Grid */}
+                 {activeView === VIEWS.TABLES && (
+                     <Box>
+                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+                             <Typography variant="h6">Tables</Typography>
+                             <Box display="flex" gap={1}>
+                                 <Button
+                                     variant="contained"
+                                     color="primary"
+                                     onClick={handleGenerateTablesFile}
+                                     disabled={tablesFileGenerating || !file.processed || extracting}
+                                     size="small"
+                                 >
+                                     {tablesFileGenerating ? 'Generating...' : 'Generate Excel'}
+                                 </Button>
+                                 {tablesDownloadUrl && (
+                                     <Button
+                                         component="a"
+                                         href={tablesDownloadUrl}
+                                         download // Let browser handle filename
+                                         variant="contained"
+                                         color="success"
+                                         disabled={extracting}
+                                         size="small"
+                                     >
+                                         Download Excel
+                                     </Button>
+                                 )}
+                             </Box>
+                         </Box>
+                          { !file.processed ? <Typography>Extract data first to view tables.</Typography> :
+                             <Box sx={{ height: 500, width: '100%' }}>
+                                 <DataGrid
+                                     rows={tables}
+                                     columns={tablesColumns}
+                                     getRowId={(row) => row.id || row.tableTitle} // ** Use a real ID from API if available! **
+                                     density="compact"
+                                     pageSizeOptions={[10, 25, 50]}
+                                     initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                                 />
+                              </Box>
+                          }
+                     </Box>
+                 )}
+
+
+                {/* Keywords Grid */}
+                 {activeView === VIEWS.KEYWORDS && (
+                     <Box>
+                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
+                             <Typography variant="h6">Keyword Query Results</Typography>
+                              <Box display="flex" gap={1}>
+                                 <Button
+                                     variant="contained"
+                                     color="primary"
+                                     onClick={handleGenerateKeywordsFile}
+                                     disabled={keywordsFileGenerating || !file.processed || extracting}
+                                     size="small"
+                                 >
+                                     {keywordsFileGenerating ? 'Generating...' : 'Generate Excel'}
+                                 </Button>
+                                 {keywordsDownloadUrl && (
+                                     <Button
+                                         component="a"
+                                         href={keywordsDownloadUrl}
+                                         download // Let browser handle filename
+                                         variant="contained"
+                                         color="success"
+                                         disabled={extracting}
+                                         size="small"
+                                     >
+                                         Download Excel
+                                     </Button>
+                                 )}
+                             </Box>
+                         </Box>
+                         { !file.processed ? <Typography>Extract data first to view keyword results.</Typography> :
+                             <Box sx={{ height: 500, width: '100%' }}>
+                                 <DataGrid
+                                     rows={keywords}
+                                     columns={keywordsColumns}
+                                     getRowId={(row) => row.id || row.keyword} // ** Use a real ID from API if available! **
+                                     density="compact"
+                                     pageSizeOptions={[10, 25, 50]}
+                                     initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                                 />
+                             </Box>
+                         }
+                     </Box>
+                 )}
+
+            </Box>
+
+             {/* Confirmation Dialog (keep as is) */}
+             <Dialog
+                 open={openConfirmation}
+                 onClose={() => handleCloseConfirmation(false)}
+                 aria-labelledby="alert-dialog-title"
+                 aria-describedby="alert-dialog-description"
+             >
+                 <DialogTitle id="alert-dialog-title">
+                     {"Confirm Re-Extraction"}
+                 </DialogTitle>
+                 <DialogContent>
+                     <DialogContentText id="alert-dialog-description">
+                         Are you sure you want to start extraction? This will delete any existing processed data (sections, tables, keywords) for this file before starting.
+                     </DialogContentText>
+                 </DialogContent>
+                 <DialogActions>
+                     <Button onClick={() => handleCloseConfirmation(false)} color="primary">
+                         Cancel
+                     </Button>
+                     <Button onClick={() => handleCloseConfirmation(true)} color="secondary" autoFocus>
+                         Yes, Delete and Extract
+                     </Button>
+                 </DialogActions>
+             </Dialog>
         </Box>
     );
 }
