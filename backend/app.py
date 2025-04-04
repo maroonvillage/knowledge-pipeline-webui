@@ -188,16 +188,16 @@ async def start_extraction(filename: str):
         
         return JSONResponse(content={"message": "Extraction completed successfully!"}, status_code=200)
 
-@app.post("/clear_data/{filename}")
-async def clear_data(filename: str):
+@app.post("/clear_data/{filepath:path}")
+async def clear_data(filepath: str):
     try:
       #clear your output files here
       # For example you can delete all contents of the file to perform the extraction again from a blank slate.
       print("Clearing data ...")
-      file_no_ext = get_filename_no_extension(filename)
+      file_no_ext = get_filename_no_extension(filepath)
       #base_filename = os.path.splitext(filename)[0]
       print(f"base_filename: {file_no_ext}")
-      pdf_prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
+      pdf_prefix = await get_filename_prefix(filepath, FILE_PREFIX_LENGTH)
         # Define patterns for files to delete
       files_to_delete = [
             os.path.join(PROCESSED_FOLDER, f"{file_no_ext}{FILE_EXTENTION_PROCESSED}")
