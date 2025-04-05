@@ -328,7 +328,7 @@ function FileDetail() {
                         <Typography>Last Modified: {file.time || 'N/A'}</Typography> {/* Assuming 'time' is last modified */}
                         <Divider sx={{ my: 2 }} />
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                             <Button variant="contained" color="secondary" onClick={handleOpenConfirmation} disabled={extracting}>
+                             <Button variant="contained" color="secondary" onClick={handleStartExtraction} disabled={extracting}>
                                  {extracting ? 'Processing...' : (file.processed ? 'Re-Extract Data' : 'Start Extraction')}
                              </Button>
                              {/* Add clear button separately if needed */}

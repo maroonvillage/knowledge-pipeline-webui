@@ -130,8 +130,8 @@ async def get_file(filepath: str):
         #if a file is present that corresponds to the filename clicked in the UI
         #  display details related to the file
         # if not, display a button to start the extraction process
-        
-        file_name_wo_ext, extension = os.path.splitext(filename)
+        folder, file_name = os.path.split(filename)
+        file_name_wo_ext, extension = os.path.splitext(file_name)
         #full_upload_path = os.path.join(UPLOAD_FOLDER, filename)
         bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
         metadata_dict = await get_file_metadata_from_s3(bucket_name,filename)
@@ -150,7 +150,7 @@ async def get_file(filepath: str):
             metadata_dict = {}
             processed_file = os.path.join(PROCESSED_FOLDER, f'{file_name_wo_ext}{FILE_EXTENTION_PROCESSED}')
             metadata_dict = await get_file_metadata_from_s3(bucket_name,processed_file)
-            metadata_dict = None
+        
             
             if(metadata_dict):
                 fm.uploaded = True
@@ -180,14 +180,23 @@ async def get_file(filepath: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/extract/{filename}")
-async def start_extraction(filename: str):
-        #TODO: Make calls to remove existing files from folders ...
-        
-        await call_pdfdocintel_extraction(filename)
+@app.post("/extract/{filepath:path}")
+async def start_extraction(filepath: str):
+    filename = unquote(filepath)
+    print(f"Starting extraction for: {filename}")
+    #TODO: Make calls to remove existing files from folders ...
+    try:
+        await call_pdfdocintel_extraction(filename, FILE_STORAGE['cloud_config']['bucket_name'])
         
         return JSONResponse(content={"message": "Extraction completed successfully!"}, status_code=200)
-
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found") 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error during extraction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/clear_data/{filepath:path}")
 async def clear_data(filepath: str):
     try:
@@ -222,9 +231,9 @@ async def clear_data(filepath: str):
       raise HTTPException(status_code=500, detail="Error during data clearing")
   
   
-@app.get("/sections/{filename}", response_model=List[Section])
-async def get_sections(filename: str):
-    
+@app.get("/sections/{filepath:path}", response_model=List[Section])
+async def get_sections(filepath: str):
+    filename = unquote(filepath)
     #await asyncio.sleep(1)
     #return load_mock_data("sections.json", Section)
     fn = os.path.basename(filename) #get just file name from path

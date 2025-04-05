@@ -120,15 +120,28 @@ async def clear_files(filename_prefix: str, files_to_delete: list, patterns: lis
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e} when clearing files. Error: {e}")
     
-async def call_pdfdocintel_extraction(filename:str):
+async def call_pdfdocintel_extraction(filename:str, bucket_name: str):
     
-    parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
-                             csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results",
-                             processed_dir="processed", embeddings_dir="embeddings")
+    try:
+        if not filename:
+            raise ValueError("Filename cannot be empty.")
+        if not bucket_name:
+            raise ValueError("Bucket name cannot be empty.")
+    
+        # Split the path into folder and file name
+        folder, file_name = os.path.split(filename)
+        if(not folder or not file_name):
+            raise ValueError("Invalid filename: Folder or file name is missing.")
         
-    # Load the PDF file
-    main(filename,parm_config)
-
+        parm_config = ParmConfig(input_dir=f"{folder}/", output_dir="output/", json_dir="json/", text_dir="text/", 
+                                csv_dir="csv/", downloads_dir="downloads/api_responses/", query_dir="query_results/",
+                                processed_dir="processed/", embeddings_dir="embeddings/") 
+            
+        # Load the PDF file
+        main(file_name,bucket_name, parm_config)
+    except ValueError as ve:
+        raise ve
+    
 async def call_pdfdocintel_get_tables_file(pdf_filename: str, filename_segment: str, file_prefix_length: int=0):
     
     logger = Logger(__name__)
