@@ -3,14 +3,15 @@ from typing import List
 import json
 import os
 
-from pdfdocintel import Logger
+from pdfdocintel import Logger, read_json_file_from_s3
 
-async def get_document_sections(filename:str) -> List[str]:
+async def get_document_sections(filename:str, bucket_name: str = None) -> List[str]:
     """
     Extracts section titles and paragraph content from a JSON file.
 
     Args:
         json_file_path: Path to the JSON file.
+        bucket_name: Optional; if provided, reads the JSON file from S3.
 
     Returns:
         A list of dictionaries, where each dictionary has "sectionTitle" and "sectionContent" keys. Returns an empty list if there are errors.
@@ -18,8 +19,17 @@ async def get_document_sections(filename:str) -> List[str]:
     logger = Logger(__name__)
     try:
         logger.debug(f'This is the filename passed into get_document_sections {filename}')
-        with open(filename, 'r') as f:
-            data = json.load(f)
+        data = {}
+        if bucket_name:
+            # If a bucket name is provided, read the JSON file from S3
+            data = read_json_file_from_s3(bucket_name, filename)
+            if not data:
+                logger.error(f"Failed to read data from S3 for file: {filename}")
+                return []
+            logger.debug(f"Successfully read data from S3 for file: {filename}")
+        else:
+            with open(filename, 'r') as f:
+                data = json.load(f)
 
         sections = []
         for section in data["sections"]:
@@ -42,12 +52,13 @@ async def get_document_sections(filename:str) -> List[str]:
         print(f"Error processing {filename}: {e}")
         return []
 
-async def get_document_tables(filename:str) -> List[str]:
+async def get_document_tables(filename:str, bucket_name: str = None) -> List[str]:
     """
     Extracts table meta-data from a JSON file.
 
     Args:
         json_file_path: Path to the JSON file.
+        bucket_name: Optional; if provided, reads the JSON file from S3.
 
     Returns:
         A list of dictionaries, where each dictionary has "table title", "row count and "column count" keys. Returns an empty list if there are errors.
@@ -55,8 +66,17 @@ async def get_document_tables(filename:str) -> List[str]:
     logger = Logger(__name__)
     try:
         logger.debug(f'This is the filename passed into get_document_sections {filename}')
-        with open(filename, 'r') as f:
-            data = json.load(f)
+        data = {}
+        if bucket_name:
+            # If a bucket name is provided, read the JSON file from S3
+            data = read_json_file_from_s3(bucket_name, filename)
+            if not data:
+                logger.error(f"Failed to read data from S3 for file: {filename}")
+                return []
+            logger.debug(f"Successfully read data from S3 for file: {filename}")
+        else:
+            with open(filename, 'r') as f:
+                data = json.load(f)
 
         tables = []
         row_count = 0

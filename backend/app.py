@@ -17,7 +17,7 @@ from models.section import Section
 from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
 from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE, \
-    FILE_EXTENTION_PROCESSED
+    FILE_EXTENTION_PROCESSED, find_file_in_bucket_by_prefix
 
 
 app = FastAPI()
@@ -45,7 +45,7 @@ DATA_FOLDER = "output/"
 UPLOAD_FOLDER = "uploads/"
 
 CSV_FOLDER = os.path.join(DATA_FOLDER,"csv")
-JSON_FOLDER = os.path.join(DATA_FOLDER,"json")
+JSON_FOLDER = os.path.join(DATA_FOLDER,"json/")
 
 PROCESSED_FOLDER = os.path.join(DATA_FOLDER,"processed/")
 QRY_RESULTS_FOLDER = os.path.join(DATA_FOLDER,"query_results/")
@@ -234,36 +234,66 @@ async def clear_data(filepath: str):
 @app.get("/sections/{filepath:path}", response_model=List[Section])
 async def get_sections(filepath: str):
     filename = unquote(filepath)
-    #await asyncio.sleep(1)
-    #return load_mock_data("sections.json", Section)
-    fn = os.path.basename(filename) #get just file name from path
-    name, extention = os.path.splitext(fn) # get just file name without extension
-    fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
-    fn = find_file_by_prefix(JSON_FOLDER, f'{fn}_pdf_content')
+    
+    try:
+        fn = os.path.basename(filename) #get just file name from path
+        name, extention = os.path.splitext(fn) # get just file name without extension
+        print(f"Getting sections for file: {filename}, stripped name: {name}, extension: {extention}")
+        fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
+        print(f"Stripped filename: {fn}")
+        fn = find_file_in_bucket_by_prefix(
+            FILE_STORAGE['cloud_config']['bucket_name'],
+            JSON_FOLDER,
+            f'{fn}_pdf_content'
+        )
+        s3_key = f'{JSON_FOLDER}{fn}'
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Sections file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+   
+    
+    return await get_document_sections(s3_key,FILE_STORAGE['cloud_config']['bucket_name'])
 
-    return await get_document_sections(fn)
+@app.get("/tables/{filepath:path}", response_model=List[Table])
+async def get_tables(filepath: str):
+    filename = unquote(filepath)
+    
+    try:
+        fn = os.path.basename(filename) #get just file name from path
+        name, extention = os.path.splitext(fn) # get just file name without extension
+        fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
+        fn = find_file_in_bucket_by_prefix(
+            FILE_STORAGE['cloud_config']['bucket_name'],
+            JSON_FOLDER,
+            f'{fn}_tables'
+        )
+        s3_key = f'{JSON_FOLDER}{fn}'
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Sections file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return await get_document_tables(s3_key,FILE_STORAGE['cloud_config']['bucket_name'])
 
-@app.get("/tables/{filename}", response_model=List[Table])
-async def get_tables(filename: str):
-    print(f'in get_tables {filename}')
-    fn = os.path.basename(filename) #get just file name from path
-    name, extention = os.path.splitext(fn) # get just file name without extension
-    fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
-    fn = find_file_by_prefix(JSON_FOLDER, f'{fn}_tables')
-
-    return await get_document_tables(fn)
-
-@app.get("/query_results/{filename}", response_model=List[KeywordQueryResult])
-async def get_query_results(filename: str):
-    # Simulate a delay for the sake of example
-    #await asyncio.sleep(1)
-    #return load_mock_data("keywords.json", KeywordQueryResult)
-    #folder = os.path.dirname(filename)
-    fn = os.path.basename(filename) #get just file name from path
-    name, extention = os.path.splitext(fn) # get just file name without extension
-    fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
-    prefix = f'{fn}_qry_results'
-
+@app.get("/query_results/{filepath:path}", response_model=List[KeywordQueryResult])
+async def get_query_results(filepath: str):
+    filename = unquote(filepath)
+    try:
+        fn = os.path.basename(filename) #get just file name from path
+        name, extention = os.path.splitext(fn) # get just file name without extension
+        fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
+        fn = find_file_in_bucket_by_prefix(
+            FILE_STORAGE['cloud_config']['bucket_name'],
+            JSON_FOLDER,
+            f'{fn}_qry_results'
+        )
+        s3_key = f'{JSON_FOLDER}{fn}'
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Sections file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    
     return await get_keyword_query_results(QRY_RESULTS_FOLDER,prefix)
 
 @app.get("/check_tables_file/{filename}")
