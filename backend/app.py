@@ -230,7 +230,6 @@ async def clear_data(filepath: str):
     except Exception as e:
       raise HTTPException(status_code=500, detail="Error during data clearing")
   
-  
 @app.get("/sections/{filepath:path}", response_model=List[Section])
 async def get_sections(filepath: str):
     filename = unquote(filepath)
@@ -280,21 +279,24 @@ async def get_tables(filepath: str):
 @app.get("/query_results/{filepath:path}", response_model=List[KeywordQueryResult])
 async def get_query_results(filepath: str):
     filename = unquote(filepath)
+    prefix = ""
     try:
         fn = os.path.basename(filename) #get just file name from path
         name, extention = os.path.splitext(fn) # get just file name without extension
         fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
-        fn = find_file_in_bucket_by_prefix(
-            FILE_STORAGE['cloud_config']['bucket_name'],
-            JSON_FOLDER,
-            f'{fn}_qry_results'
-        )
-        s3_key = f'{JSON_FOLDER}{fn}'
+        prefix = f"{QRY_RESULTS_FOLDER}{fn}_qry_results"
+        # fn = find_file_in_bucket_by_prefix(
+        #     FILE_STORAGE['cloud_config']['bucket_name'],
+        #     QRY_RESULTS_FOLDER,
+        #     prefix
+        # )
+        # s3_key = f'{QRY_RESULTS_FOLDER}{fn}'
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Sections file not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))    
-    return await get_keyword_query_results(QRY_RESULTS_FOLDER,prefix)
+    
+    return await get_keyword_query_results(QRY_RESULTS_FOLDER, prefix, FILE_STORAGE['cloud_config']['bucket_name'])
 
 @app.get("/check_tables_file/{filename}")
 async def check_tables_file(filename: str):
@@ -304,6 +306,7 @@ async def check_tables_file(filename: str):
     tables_file = f'{tables_file_segment}.csv'
     tables_file_path = os.path.join(CSV_FOLDER,tables_file)
     print(f"check_tables_file {tables_file_path}")
+    
     if os.path.exists(tables_file_path):
         return {"tables_file": tables_file}
     else:
@@ -316,7 +319,7 @@ async def check_keywords_file(filename: str):
     filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
     keywords_file = f'{filename_segment}.csv'
     keywords_file_path = os.path.join(CSV_FOLDER,keywords_file)
-    print(f"check_tables_file {keywords_file_path}")
+    print(f"check_keywords_file {keywords_file_path}")
     if os.path.exists(keywords_file_path):
         return {"keywords_file": keywords_file}
     else:
