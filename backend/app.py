@@ -10,7 +10,8 @@ from typing import Any, List
 from fastapi.middleware.cors import CORSMiddleware
 from services.file_processing import process_file, call_pdfdocintel_extraction, \
     get_file_metadata, check_file, call_pdfdocintel_get_tables_file, \
-        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3
+        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3, \
+        call_pdfdocintel_get_tables_file_s3
 from services.data_service import get_document_sections, get_keyword_query_results, get_document_tables
 from models.file_metadata import FileMetadata
 from models.section import Section
@@ -44,7 +45,7 @@ FILE_PREFIX_LENGTH = 0
 DATA_FOLDER = "output/"
 UPLOAD_FOLDER = "uploads/"
 
-CSV_FOLDER = os.path.join(DATA_FOLDER,"csv")
+CSV_FOLDER = os.path.join(DATA_FOLDER,"csv/")
 JSON_FOLDER = os.path.join(DATA_FOLDER,"json/")
 
 PROCESSED_FOLDER = os.path.join(DATA_FOLDER,"processed/")
@@ -298,10 +299,11 @@ async def get_query_results(filepath: str):
     
     return await get_keyword_query_results(QRY_RESULTS_FOLDER, prefix, FILE_STORAGE['cloud_config']['bucket_name'])
 
-@app.get("/check_tables_file/{filename}")
-async def check_tables_file(filename: str):
+@app.get("/check_tables_file/{filepath:path}")
+async def check_tables_file(filepath: str):
     
-    prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
+    filename = unquote(filepath)
+    prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH,FILE_STORAGE['cloud_config']['bucket_name'])
     tables_file_segment = f'{prefix}{FILENAME_SEGMENT_TABLES}'
     tables_file = f'{tables_file_segment}.csv'
     tables_file_path = os.path.join(CSV_FOLDER,tables_file)
@@ -312,10 +314,11 @@ async def check_tables_file(filename: str):
     else:
         raise HTTPException(status_code=404, detail="File does not exist")
 
-@app.get("/check_keywords_file/{filename}")
-async def check_keywords_file(filename: str):
+@app.get("/check_keywords_file/{filepath:path}")
+async def check_keywords_file(filepath: str):
     
-    prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
+    filename = unquote(filepath)
+    prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH,FILE_STORAGE['cloud_config']['bucket_name'])
     filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
     keywords_file = f'{filename_segment}.csv'
     keywords_file_path = os.path.join(CSV_FOLDER,keywords_file)
@@ -325,14 +328,12 @@ async def check_keywords_file(filename: str):
     else:
         raise HTTPException(status_code=404, detail="File does not exist")
 
-@app.post("/generate_tables_file/{filename}")
-async def generate_tables_file(filename: str):
-    #file_prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH)
-    #tables_file = await get_file_path(CSV_FOLDER, file_prefix, FILENAME_SEGMENT_TABLES, "csv")
-    #print("Writing: ", tables_file)
+@app.post("/generate_tables_file/{filepath:path}")
+async def generate_tables_file(filepath: str):
+    filename = unquote(filepath)
     try:
         #Call PDFDOCINTEL to generate CSV file ...
-       await call_pdfdocintel_get_tables_file(filename,FILENAME_SEGMENT_TABLES, FILE_PREFIX_LENGTH)
+       await call_pdfdocintel_get_tables_file_s3(FILE_STORAGE['cloud_config']['bucket_name'], filename,FILENAME_SEGMENT_TABLES, FILE_PREFIX_LENGTH)
        return {"success": True, "message": "Tables file generated successfully"}
     except Exception as e:
        raise HTTPException(status_code=500, detail=str(e))
@@ -366,7 +367,6 @@ async def download_tables_file(filename: str):
         raise HTTPException(status_code=404, detail="Tables file not found")      
             
             
-
 @app.get("/download/keywords/{filename}")
 async def download_keywords_file(filename: str):
     # base_filename =  os.path.splitext(filename)[0]  # Remove the original extension
@@ -394,6 +394,9 @@ if __name__ == "__main__":
         print("Starting FastAPI server...")
         import uvicorn
         uvicorn.run(app, host="0.0.0.0", port=5001)
+        
+        #await call_pdfdocintel_get_tables_file_s3("next9bucket01", "uploads/AI_Risk_Management-NIST.AI.100-1.pdf", "_tables", 0)
+        
         #filename = './files/uploads/ISO+IEC+23894-2023.pdf'
         
         #asyncio.run(clear_data(filename=filename))
