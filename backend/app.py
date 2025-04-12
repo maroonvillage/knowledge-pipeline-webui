@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.file_processing import process_file, call_pdfdocintel_extraction, \
     get_file_metadata, check_file, call_pdfdocintel_get_tables_file, \
         call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3, \
-        call_pdfdocintel_get_tables_file_s3
+        call_pdfdocintel_get_tables_file_s3, call_pdfdocintel_get_keywords_file_s3
 from services.data_service import get_document_sections, get_keyword_query_results, get_document_tables
 from models.file_metadata import FileMetadata
 from models.section import Section
@@ -81,8 +81,7 @@ def load_mock_data(filename: str, data_model: BaseModel):
         print(f"Error loading {filename}: {e}")
         return []  # Return an empty list if there is an error loading.
     
-    
-    
+        
 @app.post("/upload", response_model = FileMetadata)
 async def upload_file(file: UploadFile = File(...)):
     if not file:
@@ -338,12 +337,12 @@ async def generate_tables_file(filepath: str):
     except Exception as e:
        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/generate_keywords_file/{filename}")
-async def generate_keywords_file(filename: str):
-    #keywords_file = await get_file_path(KEYWORDS_DIR, filename, FILENAME_SEGMENT_TABLES, "csv")
+@app.post("/generate_keywords_file/{filepath:path}")
+async def generate_keywords_file(filepath: str):
+    filename = unquote(filepath)
     try:
        #Call PDFDOCINTEL to generate CSV file ...
-       await call_pdfdocintel_get_keywords_file(filename,FILENAME_SEGMENT_QRY_RESULTS, FILE_PREFIX_LENGTH)
+       await call_pdfdocintel_get_keywords_file_s3(FILE_STORAGE['cloud_config']['bucket_name'],filename,FILENAME_SEGMENT_QRY_RESULTS, FILE_PREFIX_LENGTH)
        return {"success": True, "message": "Keywords file generated successfully"}
     except Exception as e:
        raise HTTPException(status_code=500, detail=str(e))

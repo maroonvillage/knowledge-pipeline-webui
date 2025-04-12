@@ -76,7 +76,7 @@ async def get_file_metadata_from_s3(bucket_name, key):
     """
     try:
         print(f"Getting metadata for file in S3 bucket: {bucket_name}, key: {key}")
-        file_metadata = await get_s3_object_metadata(bucket_name, key)
+        file_metadata = get_s3_object_metadata(bucket_name, key)
         if not file_metadata:
             return {}
 
@@ -150,7 +150,7 @@ async def get_filename_prefix(pdf_filename, file_prefix_length, bucket_name: str
     just_filename = ""
     if bucket_name and bucket_name.strip():
         # If a bucket name is provided, get the metadata from S3
-        metadata = await get_s3_object_metadata(bucket_name, pdf_filename)
+        metadata = get_s3_object_metadata(bucket_name, pdf_filename)
         if metadata and 'Key' in metadata:
             folder, just_filename = os.path.split(metadata['Key'])
         else:
@@ -222,7 +222,7 @@ async def call_pdfdocintel_get_tables_file(pdf_filename: str, filename_segment: 
 
 async def call_pdfdocintel_get_tables_file_s3(bucket_name: str, pdf_filename: str, filename_segment: str, file_prefix_length: int=0):
     
-    logger = Logger(__name__)
+    logger = Logger(f'{__name__}.call_pdfdocintel_get_tables_file_s3')
     
     logger.debug("Inside call_pdfdocintel_get_tables_file_s3 ... ")
     try:
@@ -264,7 +264,7 @@ async def call_pdfdocintel_get_tables_file_s3(bucket_name: str, pdf_filename: st
             logger.info(f"Processing file: {json_file_path}")
             json_data = {}
             #Open the file from S3
-            json_data = await get_s3_object(bucket_name,json_file_path)
+            json_data = get_s3_object(bucket_name,json_file_path)
             json_dict = json.loads(json_data)
             await json_to_csv_table_layout_s3(json_dict, bucket_name, full_output_path)
         
@@ -324,10 +324,60 @@ async def call_pdfdocintel_get_keywords_file(pdf_filename: str, filename_segment
         logger.error(f"An unexpected error occurred: {e} when processing files in folder: {parm_config.get_output_query_dir()}. Error: {e}")
     return None
 
-
-
-# if __name__ == "__main__":
+async def call_pdfdocintel_get_keywords_file_s3(bucket_name: str, pdf_filename: str, filename_segment: str, file_prefix_length: int=0):
     
-#         async def main():
+    logger = Logger(f'{__name__}.call_pdfdocintel_get_keywords_file_s3')
+    
+    logger.debug("Inside call_pdfdocintel_get_keywords_file_s3 ... ")
+    try:
+        if not pdf_filename:
+            raise ValueError("Filename cannot be empty.")
+        
+        if not bucket_name:
+            raise ValueError("Bucket name cannot be empty.")
+        
+        # Split the path into folder and file name
+        folder, file_name = os.path.split(pdf_filename)
             
-#             await call_pdfdocintel_get_tables_file_s3("next9bucket01", "uploads/AI_Risk_Management-NIST.AI.100-1.pdf", "_tables", 0)
+        parm_config = ParmConfig(input_dir=f"{folder}/", output_dir="output/", json_dir="json/", text_dir="text/", 
+                                    csv_dir="csv/", downloads_dir="downloads/api_responses/", query_dir="query_results/",
+                                    processed_dir="processed/", embeddings_dir="embeddings/")
+        
+        #Create the prefix of the file ...
+        json_prefix = await get_filename_prefix(pdf_filename, file_prefix_length, bucket_name)
+        json_prefix = f"{json_prefix}{filename_segment}"
+        logger.debug(f'File prefix: {json_prefix}')
+        #####################################   
+        output_file = generate_filename(json_prefix,timestamp=False, extension="csv")
+        
+        logger.debug(f'output file: {output_file}')
+        
+        full_output_path = os.path.join(parm_config.get_output_csv_dir(), output_file)
+        
+        logger.debug(f'Full output path: {full_output_path}')
+        
+        #TODO: Get a list of files from S3 by prefix
+        json_prefix_key = f"{parm_config.get_output_query_dir()}{json_prefix}"
+        logger.debug(f'json_prefix_key: {json_prefix_key}')
+        filtered_files = await get_files_from_s3(bucket_name, prefix=json_prefix_key, extension='.json')
+        # first_file = True
+        for file in filtered_files:
+            object_key = file['Key']
+            filename = os.path.basename(object_key)
+            json_file_path = os.path.join(parm_config.get_output_query_dir(), filename)
+            logger.info(f"Processing file: {json_file_path}")
+            json_data = {}
+            #Open the file from S3
+            json_data = get_s3_object(bucket_name,json_file_path)
+            json_dict = json.loads(json_data)
+            json_to_csv_with_max_score_s3(json_dict, bucket_name, full_output_path)
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"JSONDecodeError: {e} when loading file: {json_file_path}. Error: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e} when processing file: {json_file_path}. Error: {e}")
+    except FileNotFoundError as e:
+      logger.error(f"FileNotFoundError: {e} when listing files in folder: {parm_config.get_output_csv_dir()}. Error: {e}")
+    except Exception as e:
+     logger.error(f"An unexpected error occurred: {e} when processing files in folder: {parm_config.get_output_csv_dir()}. Error: {e}")
+     return None
