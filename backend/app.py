@@ -291,42 +291,71 @@ async def get_query_results(filepath: str):
         #     prefix
         # )
         # s3_key = f'{QRY_RESULTS_FOLDER}{fn}'
+        query_results =  await get_keyword_query_results(QRY_RESULTS_FOLDER, prefix, FILE_STORAGE['cloud_config']['bucket_name'])
+        print(f"Query results for file: {filename}, prefix: {prefix} found {len(query_results)} results")
+        return query_results
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Sections file not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))    
     
-    return await get_keyword_query_results(QRY_RESULTS_FOLDER, prefix, FILE_STORAGE['cloud_config']['bucket_name'])
+    
 
 @app.get("/check_tables_file/{filepath:path}")
 async def check_tables_file(filepath: str):
     
     filename = unquote(filepath)
-    prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH,FILE_STORAGE['cloud_config']['bucket_name'])
-    tables_file_segment = f'{prefix}{FILENAME_SEGMENT_TABLES}'
-    tables_file = f'{tables_file_segment}.csv'
-    tables_file_path = os.path.join(CSV_FOLDER,tables_file)
-    print(f"check_tables_file {tables_file_path}")
     
-    if os.path.exists(tables_file_path):
-        return {"tables_file": tables_file}
-    else:
-        raise HTTPException(status_code=404, detail="File does not exist")
+    try:
+        
+        prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH,FILE_STORAGE['cloud_config']['bucket_name'])
+        tables_file_segment = f'{prefix}{FILENAME_SEGMENT_TABLES}'
+        tables_file = f'{tables_file_segment}.csv'
+        tables_file_path = os.path.join(CSV_FOLDER,tables_file)
+    
+        bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
+        metadata_dict = await get_file_metadata_from_s3(bucket_name,tables_file_path)
+        if(metadata_dict):
+            filename =  metadata_dict['Key'],  # S3 Key is the filename
+            return {"tables_file": filename}
 
+        else:
+            raise HTTPException(status_code=404, detail="File does not exist")
+        
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found") 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.get("/check_keywords_file/{filepath:path}")
 async def check_keywords_file(filepath: str):
     
     filename = unquote(filepath)
-    prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH,FILE_STORAGE['cloud_config']['bucket_name'])
-    filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
-    keywords_file = f'{filename_segment}.csv'
-    keywords_file_path = os.path.join(CSV_FOLDER,keywords_file)
-    print(f"check_keywords_file {keywords_file_path}")
-    if os.path.exists(keywords_file_path):
-        return {"keywords_file": keywords_file}
-    else:
-        raise HTTPException(status_code=404, detail="File does not exist")
+    try:
+        prefix = await get_filename_prefix(filename, FILE_PREFIX_LENGTH,FILE_STORAGE['cloud_config']['bucket_name'])
+        filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
+        keywords_file = f'{filename_segment}.csv'
+        keywords_file_path = os.path.join(CSV_FOLDER,keywords_file)
+                                      
 
+        bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
+        metadata_dict = await get_file_metadata_from_s3(bucket_name,keywords_file_path)
+        if(metadata_dict):
+            filename =  metadata_dict['Key'],  # S3 Key is the filename
+            return {"keywords_file": filename}
+
+        else:
+            raise HTTPException(status_code=404, detail="File does not exist")
+        
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found") 
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 @app.post("/generate_tables_file/{filepath:path}")
 async def generate_tables_file(filepath: str):
     filename = unquote(filepath)
