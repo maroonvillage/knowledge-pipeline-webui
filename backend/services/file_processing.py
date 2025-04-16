@@ -7,7 +7,7 @@ from typing import Any;
 from pdfdocintel import main, ParmConfig, Logger, json_to_csv_table_layout,json_to_csv_with_max_score, \
                             json_to_csv_table_layout_s3, json_to_csv_with_max_score_s3, \
                             get_filename_no_extension,generate_filename, strip_non_alphanumeric, \
-                                list_s3_objects, get_s3_object_metadata, get_s3_object;
+                                list_s3_objects, get_s3_object_metadata, get_s3_object,process_s3_json_to_csv;
 
 
 async def process_file(file: UploadFile, upload_folder:str) -> FileMetadata:
@@ -94,7 +94,7 @@ async def get_file_path(directory, filename, prefix_length, segment, extension) 
     return file_path
 
 async def clear_files(filename_prefix: str, files_to_delete: list, patterns: list):
-    logger = Logger(__name__)
+    logger = Logger(f'{__name__}.clear_files')
     try:
 
         logger.info(f"Preparing to delete files in folders  with prefix {filename_prefix} ...")
@@ -170,7 +170,7 @@ async def get_filename_prefix(pdf_filename, file_prefix_length, bucket_name: str
     
 async def call_pdfdocintel_get_tables_file(pdf_filename: str, filename_segment: str, file_prefix_length: int=0):
     
-    logger = Logger(__name__)
+    logger = Logger(f'{__name__}.call_pdfdocintel_get_tables_file')
     
     logger.debug("Inside call_pdfdocintel_get_tables_file ... ")
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
@@ -280,7 +280,7 @@ async def call_pdfdocintel_get_tables_file_s3(bucket_name: str, pdf_filename: st
 
 async def call_pdfdocintel_get_keywords_file(pdf_filename: str, filename_segment: str, file_prefix_length: int=0):
     
-    logger = Logger(__name__)
+    logger = Logger(f'{__name__}.call_pdfdocintel_get_keywords_file')
      
     parm_config = ParmConfig(input_dir="files/uploads", output_dir="files/output", json_dir="json", text_dir="text", 
                              csv_dir="csv", downloads_dir="files/downloads/api_responses", query_dir="query_results")
@@ -347,6 +347,7 @@ async def call_pdfdocintel_get_keywords_file_s3(bucket_name: str, pdf_filename: 
         json_prefix = await get_filename_prefix(pdf_filename, file_prefix_length, bucket_name)
         json_prefix = f"{json_prefix}{filename_segment}"
         logger.debug(f'File prefix: {json_prefix}')
+        
         #####################################   
         output_file = generate_filename(json_prefix,timestamp=False, extension="csv")
         
@@ -359,18 +360,25 @@ async def call_pdfdocintel_get_keywords_file_s3(bucket_name: str, pdf_filename: 
         #TODO: Get a list of files from S3 by prefix
         json_prefix_key = f"{parm_config.get_output_query_dir()}{json_prefix}"
         logger.debug(f'json_prefix_key: {json_prefix_key}')
-        filtered_files = await get_files_from_s3(bucket_name, prefix=json_prefix_key, extension='.json')
+        
+        #await json_to_csv_with_max_score_s3(bucket_name, full_output_path, json_prefix_key)
+        process_s3_json_to_csv(bucket_name, json_prefix_key, full_output_path)
+        # filtered_files = await get_files_from_s3(bucket_name, prefix=json_prefix_key, extension='.json')
         # first_file = True
-        for file in filtered_files:
-            object_key = file['Key']
-            filename = os.path.basename(object_key)
-            json_file_path = os.path.join(parm_config.get_output_query_dir(), filename)
-            logger.info(f"Processing file: {json_file_path}")
-            json_data = {}
-            #Open the file from S3
-            json_data = get_s3_object(bucket_name,json_file_path)
-            json_dict = json.loads(json_data)
-            json_to_csv_with_max_score_s3(json_dict, bucket_name, full_output_path)
+        # logger.debug(f'filtered_files: {filtered_files}')
+        # for file in filtered_files:
+        #     #object_key = file['Key']
+        #     #filename = os.path.basename(object_key)
+        #     #json_file_path = os.path.join(parm_config.get_output_query_dir(), filename)
+        #     json_file_path = file['Key']
+        #     logger.info(f"Processing file: {json_file_path}")
+        #     json_data = {}
+        #     #Open the file from S3
+        #     json_data = get_s3_object(bucket_name,json_file_path)
+        #     json_dict = json.loads(json_data)
+        #     logger.debug(f'json_dict: {json_dict}')
+        #     await json_to_csv_with_max_score_s3(json_dict, bucket_name, full_output_path, write_header=first_file)
+        #     first_file = False
         
     except json.JSONDecodeError as e:
         logger.error(f"JSONDecodeError: {e} when loading file: {json_file_path}. Error: {e}")
