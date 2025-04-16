@@ -370,7 +370,7 @@ function FileDetail() {
                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
                              <Typography variant="h6">Tables</Typography>
                              <Box display="flex" gap={1}>
-                                 <Button
+                             {!tablesDownloadUrl && (<Button
                                      variant="contained"
                                      color="primary"
                                      onClick={handleGenerateTablesFile}
@@ -379,6 +379,7 @@ function FileDetail() {
                                  >
                                      {tablesFileGenerating ? 'Generating...' : 'Generate Excel'}
                                  </Button>
+                                 )}
                                  {tablesDownloadUrl && (
                                      <Button
                                          component="a"
@@ -416,7 +417,7 @@ function FileDetail() {
                           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} flexWrap="wrap" gap={1}>
                              <Typography variant="h6">Keyword Query Results</Typography>
                               <Box display="flex" gap={1}>
-                                 <Button
+                              {!keywordsDownloadUrl && (<Button
                                      variant="contained"
                                      color="primary"
                                      onClick={handleGenerateKeywordsFile}
@@ -425,6 +426,7 @@ function FileDetail() {
                                  >
                                      {keywordsFileGenerating ? 'Generating...' : 'Generate Excel'}
                                  </Button>
+                                    )}
                                  {keywordsDownloadUrl && (
                                      <Button
                                          component="a"
