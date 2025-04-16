@@ -16,7 +16,7 @@ async def get_document_sections(filename:str, bucket_name: str = None) -> List[s
     Returns:
         A list of dictionaries, where each dictionary has "sectionTitle" and "sectionContent" keys. Returns an empty list if there are errors.
     """
-    logger = Logger(__name__)
+    logger = Logger(f'{__name__}.get_document_sections')
     try:
         logger.debug(f'This is the filename passed into get_document_sections {filename}')
         data = {}
@@ -63,7 +63,7 @@ async def get_document_tables(filename:str, bucket_name: str = None) -> List[str
     Returns:
         A list of dictionaries, where each dictionary has "table title", "row count and "column count" keys. Returns an empty list if there are errors.
     """
-    logger = Logger(__name__)
+    logger = Logger(f'{__name__}.get_document_tables')
     try:
         logger.debug(f'This is the filename passed into get_document_sections {filename}')
         data = {}
@@ -114,9 +114,16 @@ async def get_document_tables(filename:str, bucket_name: str = None) -> List[str
         return []
 
 async def get_keyword_query_results(folder_path:str, prefix:str, bucket_name: str = None ) -> List[str]:
-    # Replace with your logic to extract keyword query results from the document
-    # For now, just return a list of dummy keyword query results
-    logger = Logger(__name__)
+    """
+    Extracts keyword query results from JSON files in a specified folder.
+    Args:
+        folder_path: Path to the folder containing JSON files.
+        prefix: Prefix to filter the files.
+        bucket_name: Optional; if provided, reads the JSON file from S3.
+    Returns:
+        A list of dictionaries, where each dictionary has "keyword" and "relevantContent" keys. Returns an empty list if there are errors.
+    """
+    logger = Logger(f'{__name__}.get_keyword_query_results')
     data = {}
     try:
         logger.debug(f'This is the filename passed into get_keyword_query_results {folder_path} prefix: {prefix}')
@@ -126,7 +133,7 @@ async def get_keyword_query_results(folder_path:str, prefix:str, bucket_name: st
         else:
             list_of_files = os.listdir(folder_path)
             
-        filtered_files = [file for file in list_of_files if file.startswith(prefix)]
+        filtered_files = [file for file in list_of_files if file.startswith(prefix) and file.endswith('.json')]
         logger.debug(f'this is the list of files: {filtered_files}')
         results = []
         for filename in filtered_files:
@@ -168,8 +175,8 @@ async def get_keyword_query_results(folder_path:str, prefix:str, bucket_name: st
                 except FileNotFoundError as e:
                     logger.error(f"Folder not found: {folder_path}, error: {e}")
         return results
-    except json.JSONDecodeError:
-        print(f"Invalid JSON format in: {filename}")
+    except json.JSONDecodeError as je:
+        print(f"Invalid JSON format in: {filename}, error: {je}")
         return []
     except Exception as e:
         print(f"Error processing {filename}: {e}")
