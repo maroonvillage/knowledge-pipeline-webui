@@ -132,7 +132,7 @@ async def get_file(filepath: str):
         # if not, display a button to start the extraction process
         folder, file_name = os.path.split(filename)
         file_name_wo_ext, extension = os.path.splitext(file_name)
-        #full_upload_path = os.path.join(UPLOAD_FOLDER, filename)
+
         bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
         metadata_dict = await get_file_metadata_from_s3(bucket_name,filename)
         
@@ -269,12 +269,12 @@ async def get_tables(filepath: str):
             f'{fn}_tables'
         )
         s3_key = f'{JSON_FOLDER}{fn}'
+        return await get_document_tables(s3_key,FILE_STORAGE['cloud_config']['bucket_name'])
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Sections file not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-    return await get_document_tables(s3_key,FILE_STORAGE['cloud_config']['bucket_name'])
 
 @app.get("/query_results/{filepath:path}", response_model=List[KeywordQueryResult])
 async def get_query_results(filepath: str):
@@ -285,12 +285,7 @@ async def get_query_results(filepath: str):
         name, extention = os.path.splitext(fn) # get just file name without extension
         fn = strip_non_alphanumeric(name) #strip non-alpha numberic characters from file name
         prefix = f"{QRY_RESULTS_FOLDER}{fn}_qry_results"
-        # fn = find_file_in_bucket_by_prefix(
-        #     FILE_STORAGE['cloud_config']['bucket_name'],
-        #     QRY_RESULTS_FOLDER,
-        #     prefix
-        # )
-        # s3_key = f'{QRY_RESULTS_FOLDER}{fn}'
+
         query_results =  await get_keyword_query_results(QRY_RESULTS_FOLDER, prefix, FILE_STORAGE['cloud_config']['bucket_name'])
         print(f"Query results for file: {filename}, prefix: {prefix} found {len(query_results)} results")
         return query_results
@@ -388,9 +383,7 @@ async def download_tables_file(filename: str):
         
     download_file = os.path.join(CSV_FOLDER, filename)
     if(os.path.isfile(download_file)):
-        #return await get_file_metadata(download_file)
         return FileResponse(download_file, filename=filename, media_type='text/csv')
-        #return JSONResponse(content={"message": f"File {download_file} successfully downloaded"}, status_code=200)
     else:
         raise HTTPException(status_code=404, detail="Tables file not found")      
             
