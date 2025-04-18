@@ -1,0 +1,23 @@
+# ./.dockerignore
+
+# Ignore backend directory entirely for frontend build context
+backend/
+
+# Ignore Node dependencies and build artifacts
+node_modules/
+build/
+dist/
+.env
+*.log
+
+# Ignore Git and OS files
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Docker related files
+Dockerfile
+docker-compose.yml
+.dockerignore
+nginx.conf

@@ -1,0 +1,44 @@
+# docker-compose.yml
+#version: '3.8' # Specify compose file version
+
+services:
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./backend # Path to the directory containing the backend Dockerfile
+      dockerfile: Dockerfile
+    container_name: pdf_backend
+    # If using the Nginx proxy (recommended), no need to expose backend port to host
+    # ports:
+    #   - "8000:8000" # Expose backend port 8000 on the host (only if NOT using Nginx proxy for /api)
+    volumes:
+      # Mount local code for development (optional, remove for production builds)
+      # Be cautious with volumes in backend if dependencies change often
+      - ./backend/app:/app/app
+    networks:
+      - pdf_network
+    # environment: # Add any environment variables needed by FastAPI
+    #   - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+    #   - SECRET_KEY=your_secret_key
+    restart: unless-stopped # Or 'always'
+
+  # Frontend Service (React served by Nginx)
+  frontend:
+    build:
+      context: ./frontend # Path to the directory containing the frontend Dockerfile
+      dockerfile: Dockerfile
+      # args: # If using build-time args for API URL (less common)
+      #   - REACT_APP_API_URL=/api
+    container_name: pdf_frontend
+    ports:
+      - "3000:80" # Map host port 3000 to container's Nginx port 80
+    depends_on:
+      - backend # Optional: ensures backend starts before frontend (doesn't guarantee readiness)
+    networks:
+      - pdf_network
+    restart: unless-stopped # Or 'always'
+
+# Define the network
+networks:
+  pdf_network:
+    driver: bridge # Default network driver

@@ -15,7 +15,7 @@ function FileListGrid() {
     useEffect(() => {
         const fetchData = async () => {
           try {
-            const response = await fetch('http://localhost:5001/get_files');
+            const response = await fetch('/api/get_files');
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }

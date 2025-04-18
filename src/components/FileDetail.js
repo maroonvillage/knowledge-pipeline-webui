@@ -57,7 +57,7 @@ function FileDetail() {
 
             try {
                 const encodedFileName = encodeURIComponent(filename);
-                const fileResponse = await fetch(`http://localhost:5001/get_file/${encodedFileName}`);
+                const fileResponse = await fetch(`/api/get_file/${encodedFileName}`);
                 if (!fileResponse.ok) throw new Error(`HTTP error! status: ${fileResponse.status}`);
                 const fileData = await fileResponse.json();
 
@@ -67,11 +67,11 @@ function FileDetail() {
                 if (fileData?.processed) {
                     // Fetch details only if processed
                     const [sectionsRes, tablesRes, keywordsRes, tablesCheckRes, keywordsCheckRes] = await Promise.allSettled([
-                        fetch(`http://localhost:5001/sections/${encodedFileName}`),
-                        fetch(`http://localhost:5001/tables/${encodedFileName}`),
-                        fetch(`http://localhost:5001/query_results/${encodedFileName}`),
-                        fetch(`http://localhost:5001/check_tables_file/${encodedFileName}`),
-                        fetch(`http://localhost:5001/check_keywords_file/${encodedFileName}`),
+                        fetch(`/api/sections/${encodedFileName}`),
+                        fetch(`/api/tables/${encodedFileName}`),
+                        fetch(`/api/query_results/${encodedFileName}`),
+                        fetch(`/api/check_tables_file/${encodedFileName}`),
+                        fetch(`/api/check_keywords_file/${encodedFileName}`),
                     ]);
 
                     if (!isMounted) return;
@@ -82,14 +82,14 @@ function FileDetail() {
 
                     if (tablesCheckRes.status === 'fulfilled' && tablesCheckRes.value.ok) {
                         const data = await tablesCheckRes.value.json();
-                        setTablesDownloadUrl(`http://localhost:5001/download/tables/${data.tables_file}`);
+                        setTablesDownloadUrl(`/api/download/tables/${data.tables_file}`);
                     } else {
                         setTablesDownloadUrl(null);
                     }
 
                     if (keywordsCheckRes.status === 'fulfilled' && keywordsCheckRes.value.ok) {
                         const data = await keywordsCheckRes.value.json();
-                        setKeywordsDownloadUrl(`http://localhost:5001/download/keywords/${data.keywords_file}`);
+                        setKeywordsDownloadUrl(`/api/download/keywords/${data.keywords_file}`);
                     } else {
                         setKeywordsDownloadUrl(null);
                     }
@@ -121,20 +121,20 @@ function FileDetail() {
          try {
             const encodedFileName = encodeURIComponent(filename);
              const [tablesCheckRes, keywordsCheckRes] = await Promise.allSettled([
-                 fetch(`http://localhost:5001/check_tables_file/${encodedFileName}`),
-                 fetch(`http://localhost:5001/check_keywords_file/${encodedFileName}`),
+                 fetch(`/api/check_tables_file/${encodedFileName}`),
+                 fetch(`/api/check_keywords_file/${encodedFileName}`),
              ]);
 
              if (tablesCheckRes.status === 'fulfilled' && tablesCheckRes.value.ok) {
                  const data = await tablesCheckRes.value.json();
-                 setTablesDownloadUrl(`http://localhost:5001/download/tables/${data.tables_file}`);
+                 setTablesDownloadUrl(`/api/download/tables/${data.tables_file}`);
              } else {
                  setTablesDownloadUrl(null);
              }
 
              if (keywordsCheckRes.status === 'fulfilled' && keywordsCheckRes.value.ok) {
                  const data = await keywordsCheckRes.value.json();
-                 setKeywordsDownloadUrl(`http://localhost:5001/download/keywords/${data.keywords_file}`);
+                 setKeywordsDownloadUrl(`/api/download/keywords/${data.keywords_file}`);
              } else {
                  setKeywordsDownloadUrl(null);
              }
@@ -150,7 +150,7 @@ function FileDetail() {
         setExtractionStatus("Starting Extraction...");
         try {
             logger.debug(`Starting extraction for: ${filename}`);
-            const response = await fetch(`http://localhost:5001/extract/${encodeURIComponent(filename)}`, { method: 'POST' });
+            const response = await fetch(`/api/extract/${encodeURIComponent(filename)}`, { method: 'POST' });
 
             const data = await response.json(); // Read response body for both success/error
             if (response.ok) {
@@ -175,7 +175,7 @@ function FileDetail() {
         setTablesFileGenerating(true);
         setError(null);
         try {
-            const response = await fetch(`http://localhost:5001/generate_tables_file/${encodeURIComponent(filename)}`, { method: 'POST' });
+            const response = await fetch(`/api/generate_tables_file/${encodeURIComponent(filename)}`, { method: 'POST' });
             if (!response.ok) {
                  const errorData = await response.json();
                  throw new Error(errorData.error || 'Failed to generate tables file');
@@ -193,7 +193,7 @@ function FileDetail() {
         setKeywordsFileGenerating(true);
         setError(null);
         try {
-            const response = await fetch(`http://localhost:5001/generate_keywords_file/${encodeURIComponent(filename)}`, { method: 'POST' });
+            const response = await fetch(`/api/generate_keywords_file/${encodeURIComponent(filename)}`, { method: 'POST' });
              if (!response.ok) {
                  const errorData = await response.json();
                  throw new Error(errorData.error || 'Failed to generate keywords file');
@@ -212,7 +212,7 @@ function FileDetail() {
         setExtractionStatus("Clearing data...");
         setError(null);
         try {
-            const response = await fetch(`http://localhost:5001/clear_data/${encodeURIComponent(filename)}`, { method: 'POST' });
+            const response = await fetch(`/api/clear_data/${encodeURIComponent(filename)}`, { method: 'POST' });
             const data = await response.json();
             if (response.ok) {
                 setExtractionStatus(`${data.message}`);
