@@ -37,3 +37,4 @@ terraform/s3/terraform.tfstate.backup
 terraform/.terraform/*
 terraform/s3/.terraform/*
 *.tfplan
+terraform/terraform.tfstate.backup
