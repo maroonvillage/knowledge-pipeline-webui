@@ -31,10 +31,10 @@ backend/dist/*.whl
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate
 terraform/s3/terraform.tfstate
-.gitignore
 terraform/s3/terraform.tfstate.backup
-.gitignore
 terraform/.terraform/*
 terraform/s3/.terraform/*
 *.tfplan
 terraform/terraform.tfstate.backup
+terraform/pdfdocintel-ec2-key
+terraform/pdfdocintel-ec2-key.pub
