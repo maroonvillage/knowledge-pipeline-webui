@@ -38,3 +38,4 @@ terraform/s3/.terraform/*
 terraform/terraform.tfstate.backup
 terraform/pdfdocintel-ec2-key
 terraform/pdfdocintel-ec2-key.pub
+keypairs/*.pem

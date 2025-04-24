@@ -7,14 +7,14 @@ resource "aws_security_group" "sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["192.168.87.21/32"]  #  Make sure to narrow this down!
+    cidr_blocks = ["${var.local_ip}/32"]  #  Make sure to narrow this down!
   }
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["192.168.87.21/32"] # Make sure to narrow this down!
+    cidr_blocks = ["${var.local_ip}/32"] # Make sure to narrow this down!
   }
 
   egress {

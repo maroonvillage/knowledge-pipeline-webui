@@ -13,3 +13,27 @@ resource "aws_s3_bucket" "pdfdocintel" {
     ManagedBy   = "Terraform"
   }
 }
+
+resource "aws_s3_bucket_policy" "s3_bucket_policy" {
+  bucket = aws_s3_bucket.pdfdocintel.bucket
+
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::${var.data_caller_identity_account_id}:role/${var.ec2_role_name}"
+        },
+        "Action": [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        "Resource": [
+           aws_s3_bucket.pdfdocintel.arn,
+          "${aws_s3_bucket.pdfdocintel.arn}/*"
+        ]
+      }
+    ]
+  })
+}
