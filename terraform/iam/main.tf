@@ -19,9 +19,19 @@ resource "aws_iam_role" "ec2_role" {
 EOF
 }
 
-resource "aws_iam_role_policy_attachment" "ec2_policy_attachment" {
+resource "aws_iam_role_policy_attachment" "ec2_policy_attachment_s3" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_policy_attachment_ecr" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicReadOnly"
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_policy_attachment_secrets" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
 }
 
 #This is the IAM instance profile that will be attached to the EC2 instance
