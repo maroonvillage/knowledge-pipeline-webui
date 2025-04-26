@@ -1,0 +1,59 @@
+---
+- name: Update apt package cache (Debian/Ubuntu)
+  apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Update yum package cache (RedHat/CentOS/Amazon Linux)
+  yum:
+    name: "*"
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+- name: Install Docker
+  apt:
+    name: docker.io
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install Docker
+  yum:
+    name: docker
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure Docker is running
+  service:
+    name: docker
+    state: started
+    enabled: yes
+- name: Ensure pip is installed
+  apt:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Ensure pip is installed
+  yum:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure docker-py is installed
+  pip:
+    name: docker
+    state: present
+
+- name: Ensure folder exists
+  file:
+    path: /home/ubuntu/app/
+    state: directory
+    mode: 0777
+    owner: ubuntu
+    group: ubuntu
+
+- name: Add the user
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes

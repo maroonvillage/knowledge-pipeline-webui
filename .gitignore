@@ -39,3 +39,7 @@ terraform/terraform.tfstate.backup
 terraform/pdfdocintel-ec2-key
 terraform/pdfdocintel-ec2-key.pub
 keypairs/*.pem
+keypairs/pdfdocintel-ec2-key
+.gitignore
+keypairs/pdfdocintel-ec2-key.pub
+terraform/*.tfplan

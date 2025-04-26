@@ -1,0 +1,5 @@
+---
+- hosts: all
+  become: yes  # Run tasks as root
+  roles:
+    - docker
