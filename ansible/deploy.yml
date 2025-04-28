@@ -1,4 +1,54 @@
 ---
+- hosts: localhost
+  connection: local
+  become: no
+  vars:
+    aws_region: "us-west-1" # Replace with your AWS region
+    ecr_repository: "686255962220.dkr.ecr.us-west-1.amazonaws.com/next9_ecr_repository" # Replace with your ECR repository URL
+    role_arn: "arn:aws:iam::686255962220:role/pdfdocintel-monolith-role"  # Replace with your role ARN
+    image_name: "knowledge-pipeline-webui-backend"
+    image_tag: "latest"
+
+  tasks:
+    - name: Assume IAM role
+      command: >
+        aws sts assume-role
+        --role-arn "{{ role_arn }}"
+        --role-session-name "ansible-ecr-push"
+      register: assumed_role
+
+    - name: Set temporary credentials
+      set_fact:
+        aws_access_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+        aws_secret_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+        aws_session_token: "{{ assumed_role.stdout | from_json | json_query('Credentials.SessionToken') }}"
+
+    - name: Get ECR login password
+      command: aws ecr get-login-password --region "{{ aws_region }}"
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
+        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
+      register: ecr_password
+
+    - name: Login to ECR registry
+      shell: docker login -u AWS -p "{{ecr_password.stdout}}" {{ ecr_repository }}
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
+        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
+      register: test
+
+    - name: Tag the image
+      command: docker tag {{ image_name }}:{{ image_tag }} "{{ ecr_repository }}:{{ image_tag }}"
+
+    - name: Push image to ECR
+      command: docker push "{{ ecr_repository }}:{{ image_tag }}"
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required
+        AWS_SESSION_TOKEN: "{{ aws_session_token }}"  # Required if the role requires MFA
+
 - hosts: all
   become: yes  # Run tasks as root
   roles:
