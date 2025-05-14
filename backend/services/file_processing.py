@@ -1,5 +1,5 @@
 # backend/services/file_processing.py
-import os, glob
+import os
 import json
 from fastapi import UploadFile
 from models.file_metadata import FileMetadata
@@ -7,17 +7,34 @@ from typing import Any;
 from pdfdocintel import main, ParmConfig, Logger, json_to_csv_table_layout,json_to_csv_with_max_score, \
                             json_to_csv_table_layout_s3, json_to_csv_with_max_score_s3, \
                             get_filename_no_extension,generate_filename, strip_non_alphanumeric, \
-                                list_s3_objects, get_s3_object_metadata, get_s3_object,process_s3_json_to_csv;
+                                list_s3_objects, get_s3_object_metadata, get_s3_object,process_s3_json_to_csv, \
+                                    upload_to_s3;
 
 
-async def process_file(file: UploadFile, upload_folder:str) -> FileMetadata:
+async def process_file(file: UploadFile, upload_folder:str, bucket_name:str=None) -> FileMetadata:
+    
+    file_metadata = FileMetadata(filename=file.filename, size=0, time=0)
     try:
-        filename = os.path.join(upload_folder, file.filename)
-        with open(filename, "wb") as f:
-          while contents := await file.read(1024):
-              f.write(contents)
-        file_metadata = await get_file_metadata(filename)
-        return file_metadata
+        if bucket_name is not None:
+            # Upload the file to S3
+            key = upload_to_s3(bucket_name, upload_folder, file)
+            meta_data = get_file_metadata_from_s3(bucket_name, key)
+            
+            file_metadata.size = meta_data['size']
+            file_metadata.time = meta_data['time']
+            file_metadata.filename = meta_data['filename']
+            file_metadata.uploaded = True
+            file_metadata.found = True
+            return file_metadata
+            
+        else:
+            filename = os.path.join(upload_folder, file.filename)
+            with open(filename, "wb") as f:
+                while contents := await file.read(1024):
+                    f.write(contents)
+                file_metadata = await get_file_metadata(filename)
+            return file_metadata
+        
     except Exception as e:
         raise e
 

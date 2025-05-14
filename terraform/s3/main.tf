@@ -5,13 +5,20 @@
 
 resource "aws_s3_bucket" "pdfdocintel" {
   bucket = "${var.company_name}bucket01"  # Replace with a globally unique bucket name. Consider using a random suffix for uniqueness.
-  
+  force_destroy = true  # Deletes all objects in the bucket when the bucket is destroyed
 
   tags = {
     Name        = var.company_name
     Environment = "dev"  # Or staging/prod
     ManagedBy   = "Terraform"
   }
+}
+
+# Simulate a folder named "logs/"
+resource "aws_s3_object" "uploads" {
+  bucket = aws_s3_bucket.pdfdocintel.bucket
+  key    = "uploads/"  # Folder-like structure
+  content = ""      # Empty content to simulate a folder
 }
 
 resource "aws_s3_bucket_policy" "s3_bucket_policy" {

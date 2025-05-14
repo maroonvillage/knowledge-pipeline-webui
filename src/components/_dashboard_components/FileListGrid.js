@@ -15,7 +15,7 @@ function FileListGrid() {
     useEffect(() => {
         const fetchData = async () => {
           try {
-            const response = await fetch('/api/get_files');
+            const response = await fetch(`/api/get_files`);
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -61,7 +61,7 @@ function FileListGrid() {
       }
     
       if (error) {
-        return <div>Error: {error.message}</div>;
+        return <div>Error test: {error.message}</div>;
       }
 
   return (

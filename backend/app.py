@@ -1,13 +1,16 @@
-import asyncio
-import datetime
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+import boto3
+from botocore.exceptions import ClientError
 from urllib.parse import unquote  # Import unquote
 import json
+import logging
+import logging.config
 import os
 from pydantic import BaseModel
 from typing import Any, List
+import uuid
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, Request, UploadFile, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse
 from services.file_processing import process_file, call_pdfdocintel_extraction, \
     get_file_metadata, check_file, call_pdfdocintel_get_tables_file, \
         call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3, \
@@ -19,6 +22,72 @@ from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
 from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE, \
     FILE_EXTENTION_PROCESSED, find_file_in_bucket_by_prefix
+
+
+# Load logging configuration from file
+# Create a logs directory if it doesn't exist
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
+# Define a logging configuration dictionary
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "access": {
+            "format": "%(asctime)s - %(client_addr)s - '%(request_line)s' - %(status_code)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "level": "DEBUG",  # Set the console log level
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "default",
+            "filename": "logs/app.log",  # Log file path
+            "maxBytes": 1024 * 1024 * 5,  # 5MB
+            "backupCount": 2,  # Keep 2 old log files
+            "level": "INFO",  # Set the file log level
+        },
+        "access_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "access",
+            "filename": "logs/access.log",  # Log file path
+            "maxBytes": 1024 * 1024 * 5,  # 5MB
+            "backupCount": 2,  # Keep 2 old log files
+            "level": "INFO",  # Set the file log level
+        },
+    },
+    "loggers": {
+        "knowledge_pipeline_webui_logger": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",  # Set the logger level
+            "propagate": False,
+        },
+        "uvicorn.access": {
+            "handlers": ["access_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "WARNING",  # Default log level for everything else
+    },
+}
+
+logging.config.dictConfig(LOGGING_CONFIG)
+
+# Get the logger instance
+logger = logging.getLogger("knowledge_pipeline_webui_logger")
 
 
 app = FastAPI()
@@ -67,6 +136,7 @@ if not os.path.exists(KEYWORDS_DIR):
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+s3_client = boto3.client("s3", region_name=FILE_STORAGE['cloud_config']['region_name'],)
 
 
 def load_mock_data(filename: str, data_model: BaseModel):
@@ -81,6 +151,14 @@ def load_mock_data(filename: str, data_model: BaseModel):
         print(f"Error loading {filename}: {e}")
         return []  # Return an empty list if there is an error loading.
     
+# Add middleware to log all requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response status code: {response.status_code}")
+    return response
+
         
 @app.post("/upload", response_model = FileMetadata)
 async def upload_file(file: UploadFile = File(...)):
@@ -88,21 +166,66 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="No file selected")
 
     try:
-        file_metadata:FileMetadata = await process_file(file, UPLOAD_FOLDER)
+        file_metadata:FileMetadata = await process_file(file, UPLOAD_FOLDER, FILE_STORAGE['cloud_config']['bucket_name'])
         return file_metadata
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/generate-presigned-url/{filepath:path}")
+async def generate_presigned_url(filepath: str):
+    """
+    Generates a presigned URL for uploading a file directly to S3.
+    """
+    filename = unquote(filepath)  # Decode the filename
+    #content_type = unquote(content_type)  # Decode the content type
+    bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
+    if not bucket_name:
+        raise HTTPException(status_code=500, detail="S3 bucket name not configured on server.")
+
+    # Generate a unique object key for S3
+    # You might want a different strategy, e.g., include user ID, timestamp, etc.
+    # Sanitize filename to prevent path traversal or unwanted characters
+    sanitized_filename = "".join(c if c.isalnum() or c in ['.', '-', '_'] else '_' for c in filename)
+    #object_key = f"uploads/{uuid.uuid4()}/{sanitized_filename}"
+    object_key = f"uploads/{filename}"
+    try:
+        presigned_url_response = s3_client.generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': bucket_name,
+                'Key': object_key,
+                'ContentType': "application/pdf"
+                # 'ACL': 'private' # Or 'public-read' if needed, but usually manage via bucket policy
+                # You can add other parameters like 'Metadata'
+            },
+            ExpiresIn=3600  # URL expires in 1 hour (3600 seconds)
+        )
+    except ClientError as e:
+        print(f"Error generating presigned URL: {e}")
+        raise HTTPException(status_code=500, detail="Could not generate upload URL.")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+
+
+    return {"uploadUrl": presigned_url_response, "objectKey": object_key}
+
+
 @app.get("/get_files", response_model=List[Any])
 async def get_files():
+    logger.info(f"Getting files from S3 bucket: {FILE_STORAGE['cloud_config']['bucket_name']}")  # Log the bucket name
+    
     files_from_s3_bucket = await get_files_from_s3(FILE_STORAGE['cloud_config']['bucket_name'], extension='.pdf')
+    
+    logger.debug(f"Files retrieved from S3 bucket: {files_from_s3_bucket}")  # Log the retrieved files
     files_list = []
     id = 1
     for file in files_from_s3_bucket:
         #full_path = os.path.join(UPLOAD_FOLDER, file)
         #fm = await get_file_metadata(full_path)
-        # Convert creation time to a human-readable date
+        # Convert creation time to a human-readable date          
         
         #creation_date = datetime.datetime.fromtimestamp(fm.time)
         key = file['Key'] if 'Key' in file else None
