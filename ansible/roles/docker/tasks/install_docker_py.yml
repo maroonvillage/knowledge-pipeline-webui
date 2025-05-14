@@ -1,0 +1,26 @@
+- name: Ensure pip is installed
+  apt:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Ensure pip is installed
+  yum:
+    name: python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Check if docker-py is installed
+  command: python3 -c "import docker"
+  register: docker_py_check
+  ignore_errors: yes
+
+- name: Debug docker-py check result
+  debug:
+    msg: "{{ 'docker-py is installed' if docker_py_check.rc == 0 else 'docker-py is not installed' }}"
+
+- name: Ensure docker-py is installed using pip
+  pip:
+    name: docker
+    state: present
+  when: docker_py_check.rc != 0

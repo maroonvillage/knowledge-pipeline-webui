@@ -6,7 +6,6 @@ backend/
 # Ignore Node dependencies and build artifacts
 node_modules/
 build/
-dist/
 .env
 *.log
 
@@ -20,4 +19,11 @@ Thumbs.db
 Dockerfile
 docker-compose.yml
 .dockerignore
-nginx.conf
+#nginx.conf
+
+# Ignore project-specific files/directories
+.vscode/
+ansible/
+backend/
+keypairs/
+terraform/

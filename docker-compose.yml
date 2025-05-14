@@ -11,6 +11,8 @@ services:
     # If using the Nginx proxy (recommended), no need to expose backend port to host
     # ports:
     #   - "8000:8000" # Expose backend port 8000 on the host (only if NOT using Nginx proxy for /api)
+    env_file: # Load environment variables from a file (optional)
+      - .env # Path to your .env file
     volumes:
       # Mount local code for development (optional, remove for production builds)
       # Be cautious with volumes in backend if dependencies change often
@@ -25,7 +27,7 @@ services:
   # Frontend Service (React served by Nginx)
   frontend:
     build:
-      context: ./frontend # Path to the directory containing the frontend Dockerfile
+      context: . # Path to the directory containing the frontend Dockerfile
       dockerfile: Dockerfile
       # args: # If using build-time args for API URL (less common)
       #   - REACT_APP_API_URL=/api

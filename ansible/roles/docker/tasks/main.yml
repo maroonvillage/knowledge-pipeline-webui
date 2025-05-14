@@ -10,50 +10,111 @@
     state: latest
   when: ansible_os_family == "RedHat"
 
-- name: Install Docker
+- name: Check if Docker is already installed
+  stat:
+      path: /usr/bin/docker # Check for Docker executable path
+  register: docker_check
+
+- name: Install Docker - Debian/Ubuntu
   apt:
     name: docker.io
     state: present
-  when: ansible_os_family == "Debian"
+  when: ansible_os_family == "Debian" and not docker_check.stat.exists
 
-- name: Install Docker
+- name: Install Docker - RedHat/CentOS/Amazon Linux
   yum:
     name: docker
     state: present
-  when: ansible_os_family == "RedHat"
+  when: ansible_os_family == "RedHat" and not docker_check.stat.exists
 
 - name: Ensure Docker is running
   service:
     name: docker
     state: started
     enabled: yes
-- name: Ensure pip is installed
-  apt:
-    name: python3-pip
-    state: present
-  when: ansible_os_family == "Debian"
 
-- name: Ensure pip is installed
-  yum:
-    name: python3-pip
-    state: present
-  when: ansible_os_family == "RedHat"
+# - name: Check if Docker Compose is already installed
+#   stat:
+#     path: /usr/local/bin/docker-compose
+#   register: docker_compose_check
 
-- name: Ensure docker-py is installed
-  pip:
-    name: docker
-    state: present
+# - name: Install Docker Compose
+#   get_url:
+#       url: "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64"
+#       dest: /usr/local/bin/docker-compose
+#       mode: 'a+x'
+#   register: docker_compose_download
+#   retries: 3 # Attempt download up to 3 times
+#   when: not docker_compose_check.stat.exists
 
-- name: Ensure folder exists
-  file:
-    path: /home/ubuntu/app/
-    state: directory
-    mode: 0777
-    owner: ubuntu
-    group: ubuntu
+# - name: Check Docker Compose Version
+#   command: docker-compose --version
+#   register: compose_version_check
+#   ignore_errors: yes # Sometimes fails on the first check
 
-- name: Add the user
-  user:
-    name: ubuntu
-    groups: docker
-    append: yes
+# - name: Ensure pip is installed
+#   apt:
+#     name: python3-pip
+#     state: present
+#   when: ansible_os_family == "Debian"
+
+# - name: Ensure pip is installed
+#   yum:
+#     name: python3-pip
+#     state: present
+#   when: ansible_os_family == "RedHat"
+
+# - name: Check if docker-py is installed
+#   command: python3 -c "import docker"
+#   register: docker_py_check
+#   ignore_errors: yes # Ignore errors if docker-py is not installed
+
+# - name: Debug docker-py check result
+#   debug:
+#     msg: "{{ 'docker-py is installed' if docker_py_check.rc == 0 else 'docker-py is not installed' }}"
+
+# # - name: Install docker-py
+# #   include_tasks: install_docker_py.yml
+# #   when: docker_py_check.rc != 0
+
+# - name: Ensure /home/ec2-user/ folder exists
+#   file:
+#     path: /home/ec2-user/
+#     state: directory
+#     mode: 0755
+#     owner: ec2-user
+#     group: ec2-user
+#   become: yes
+
+# - name: Ensure app folder exists
+#   file:
+#     path: /home/ec2-user/app/
+#     state: directory
+#     mode: 0777
+#     owner: ec2-user
+#     group: ec2-user
+#   become: yes
+
+# - name: Add the user
+#   user:
+#     name: ec2-user
+#     groups: docker
+#     append: yes
+
+# - name: Install AWS CLI 
+#   include_tasks: install_aws_cli.yml
+
+- name: Authenticate Docker with ECR
+  include_tasks: authenticate_docker_with_ECR.yml
+
+- name: Pull Docker images from ECR
+  docker_image:
+    name: 686255962220.dkr.ecr.us-west-1.amazonaws.com/next9_ecr_repository:latest #replace
+    source: pull
+  register: pulled_image
+
+# - name: Start Docker containers
+#   community.docker.docker_compose_v2:
+#     project_src: /usr/local/bin/docker-compose
+#     state: present
+#   become_user: ec2-user

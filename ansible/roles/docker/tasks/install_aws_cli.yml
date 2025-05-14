@@ -1,0 +1,11 @@
+- name: Install AWS CLI on Debian/Ubuntu
+  apt:
+    name: awscli
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install AWS CLI on RedHat/CentOS
+  yum:
+    name: awscli
+    state: present
+  when: ansible_os_family == "RedHat"

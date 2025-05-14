@@ -44,3 +44,6 @@ keypairs/pdfdocintel-ec2-key
 keypairs/pdfdocintel-ec2-key.pub
 terraform/*.tfplan
 ansible/terraform.tfstate
+backend/logs/app.log
+backend/logs/access.log
+.env
