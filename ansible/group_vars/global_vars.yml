@@ -1,0 +1,18 @@
+aws_region: "us-west-1" # Replace with your AWS region
+account_id: "686255962220" # Replace with your AWS account ID
+ecr_repo_name: "next9_ecr_repository"
+ecr_registry_url: "{{ account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com"
+role_arn: "arn:aws:iam::{{account_id}}:role/pdfdocintel-monolith-role"  # Replace with your role ARN
+
+# Frontend Image Details
+frontend_local_image_name: "knowledge-pipeline-webui-frontend"
+frontend_local_image_tag: "latest" # Or a dynamic tag like git commit hash
+frontend_ecr_repo_name: "next9-frontend-app-repo"
+frontend_ecr_image_tag: "{{ frontend_local_image_tag }}" # Keep tags consistent or define differently
+
+
+# Backend Image Details
+backend_local_image_name: "knowledge-pipeline-webui-backend"
+backend_local_image_tag: "latest" # Or a dynamic tag
+backend_ecr_repo_name: "next9-backend-app-repo"
+backend_ecr_image_tag: "{{ backend_local_image_tag }}"

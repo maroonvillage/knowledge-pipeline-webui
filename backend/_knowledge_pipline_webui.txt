@@ -1,0 +1,290 @@
+# requirements.txt for Production Docker Image
+aiohttp==3.9.5
+aiosignal==1.3.2
+annotated-types==0.7.0
+anyio==4.7.0
+attrs==24.3.0
+beautifulsoup4
+blis==1.1.0
+boto3
+botocore
+build==1.2.2.post1
+catalogue==2.0.10
+certifi==2024.12.14
+cffi==1.17.1
+charset-normalizer==3.4.1
+click==8.1.8
+cloudpathlib==0.20.0
+confection==0.1.5
+cryptography==44.0.0
+cymem==2.0.10
+dataclasses-json==0.6.7
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
+fastapi==0.115.6
+filelock==3.16.1
+frozenlist==1.5.0
+fsspec==2024.12.0
+greenlet==3.1.1
+h11==0.14.0
+httpcore==1.0.7
+httpx==0.28.1
+httpx-sse==0.4.0
+huggingface-hub==0.27.0
+idna==3.10
+iniconfig==2.0.0
+Jinja2==3.1.5
+jmespath==1.0.1
+joblib==1.4.2
+jsonpatch==1.33
+jsonpointer==3.0.0
+langchain==0.3.14
+langchain-community
+langchain-core
+langchain-pinecone
+langchain-text-splitters
+langcodes==3.5.0
+langsmith==0.2.10
+language_data==1.3.0
+marisa-trie==1.2.1
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+marshmallow==3.23.3
+mdurl
+mpmath==1.3.0
+multidict==6.1.0
+murmurhash==1.0.11
+mypy-extensions==1.0.0
+neo4j==5.27.0
+networkx==3.4.2
+numpy==1.26.4
+orjson==3.10.13
+packaging==24.2
+pdfminer.six
+pillow
+pinecone-client
+pinecone-plugin-inference==1.1.0
+pinecone-plugin-interface==0.0.7
+pip==25.0.1
+pluggy==1.5.0
+preshed==3.0.9
+propcache==0.2.1
+pycparser==2.22
+pydantic==2.10.4
+pydantic_core==2.27.2
+pydantic-settings==2.7.1
+Pygments==2.18.0
+pyproject_hooks==1.2.0
+pytest==8.3.4
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+python-multipart==0.0.20
+pytz==2024.2
+PyYAML==6.0.2
+regex==2024.11.6
+requests==2.32.3
+requests-toolbelt==1.0.0
+rich==13.9.4
+s3transfer==0.11.4
+safetensors==0.4.5
+scikit-learn==1.6.0
+scipy==1.14.1
+sentence-transformers==3.3.1
+setuptools==75.6.0
+shellingham==1.5.4
+six==1.17.0
+smart-open==7.1.0
+sniffio==1.3.1
+soupsieve==2.6
+spacy==3.8.3
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+SQLAlchemy==2.0.36
+srsly==2.5.0
+starlette==0.41.3
+sympy==1.13.3
+tenacity==9.0.0
+thinc==8.3.3
+threadpoolctl==3.5.0
+tokenizers==0.21.0
+torch==2.2.2
+tqdm==4.67.1
+transformers==4.47.1
+typer==0.15.1
+typing_extensions==4.12.2
+typing-inspect==0.9.0
+urllib3==2.3.0
+uvicorn==0.34.0
+wasabi==1.1.3
+weasel==0.4.1
+wrapt==1.17.0
+yarl==1.18.3
+fastapi
+uvicorn
+rdflib
+
+# # Core Web Framework
+# fastapi
+# uvicorn[standard] # Includes performance extras like httptools, websockets
+
+# # PDF Processing
+# pdfminer.six
+# beautifulsoup4    # If parsing HTML/XML from PDFs/other sources
+# pillow            # If processing images from PDFs
+
+# # NLP / Machine Learning / Transformers Core
+# spacy>=3.8.0,<3.9.0 # Pin major/minor spaCy version
+# en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
+# langchain>=0.3.0,<0.4.0 # Pin major Langchain version range if desired
+# langchain-community     # If specific community integrations are used
+# langchain-core          # Often needed directly
+# langchain-pinecone      # Essential if using this integration
+# langchain-text-splitters # If using specific langchain splitters
+# sentence-transformers
+# transformers
+# torch                   # Note: torch can be large; consider CPU-only if GPU not needed
+
+# # Vector Database Client
+# pinecone-client>=5.0.0,<6.0.0 # Pin major Pinecone version
+
+# # Cloud / AWS
+# boto3
+
+# # Other Databases (Include ONLY if used)
+# # neo4j
+# # SQLAlchemy
+
+# # RDF Processing (Include ONLY if used)
+# # rdflib
+
+# # Configuration & Utilities
+# pydantic-settings
+# PyYAML            # If loading YAML config/data
+# requests          # For external HTTP calls
+# smart-open        # For reading from S3/GCS etc.
+
+# --- Important Notes ---
+# 1. Your local package ('pdfdocintel') should be installed from its .whl file
+#    within the Dockerfile (COPY the .whl then RUN pip install ...).
+#    Do NOT list it here directly.
+#
+# 2. Transitive dependencies (like pydantic, starlette, numpy, httpx, etc.)
+#    are installed automatically by pip based on the packages above.
+#    Do NOT list them here unless you need to pin a specific version for a
+#    compelling reason (which can lead to conflicts).
+#
+# 3. Remove commented-out lines (like neo4j, SQLAlchemy, rdflib) if you are not using them.
+#
+# 4. Consider pinning major/minor versions (e.g., fastapi>=0.115.0,<0.116.0)
+#    for more predictable builds, especially for core components. Added examples.
+
+
+# aiohttp==3.9.5
+# aiosignal==1.3.2
+# annotated-types==0.7.0
+# anyio==4.7.0
+# attrs==24.3.0
+# beautifulsoup4==4.12.3
+# blis==1.1.0
+# boto3==1.37.12
+# botocore==1.37.12
+# catalogue==2.0.10
+# certifi==2024.12.14
+# cffi==1.17.1
+# charset-normalizer==3.4.1
+# click==8.1.8
+# cloudpathlib==0.20.0
+# confection==0.1.5
+# cryptography==44.0.0
+# cymem==2.0.10
+# dataclasses-json==0.6.7
+# en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
+# filelock==3.16.1
+# frozenlist==1.5.0
+# fsspec==2024.12.0
+# greenlet==3.1.1
+# h11==0.14.0
+# httpcore==1.0.7
+# httpx==0.28.1
+# httpx-sse==0.4.0
+# huggingface-hub==0.27.0
+# idna==3.10
+# iniconfig==2.0.0
+# Jinja2==3.1.5
+# joblib==1.4.2
+# jsonpatch==1.33
+# jsonpointer==3.0.0
+# langchain==0.3.14
+# langchain-community==0.3.14
+# langchain-core==0.3.29
+# langchain-pinecone==0.2.0
+# langchain-text-splitters==0.3.4
+# langcodes==3.5.0
+# langsmith==0.2.10
+# language_data==1.3.0
+# marisa-trie==1.2.1
+# markdown-it-py==3.0.0
+# MarkupSafe==3.0.2
+# marshmallow==3.23.3
+# mdurl==0.1.2
+# mpmath==1.3.0
+# multidict==6.1.0
+# murmurhash==1.0.11
+# mypy-extensions==1.0.0
+# neo4j==5.27.0
+# networkx==3.4.2
+# numpy==1.26.4
+# orjson==3.10.13
+# packaging==24.2
+# pdfminer.six==20240706
+# pillow==11.0.0
+# pinecone-client==5.0.1
+# pinecone-plugin-inference==1.1.0
+# pinecone-plugin-interface==0.0.7
+# pluggy==1.5.0
+# preshed==3.0.9
+# propcache==0.2.1
+# pycparser==2.22
+# pydantic==2.10.4
+# pydantic-settings==2.7.1
+# pydantic_core==2.27.2
+# Pygments==2.18.0
+# pytest==8.3.4
+# python-dotenv==1.0.1
+# pytz==2024.2
+# PyYAML==6.0.2
+# regex==2024.11.6
+# requests==2.32.3
+# requests-toolbelt==1.0.0
+# rich==13.9.4
+# safetensors==0.4.5
+# scikit-learn==1.6.0
+# scipy==1.14.1
+# sentence-transformers==3.3.1
+# shellingham==1.5.4
+# smart-open==7.1.0
+# sniffio==1.3.1
+# soupsieve==2.6
+# spacy==3.8.3
+# spacy-legacy==3.0.12
+# spacy-loggers==1.0.5
+# SQLAlchemy==2.0.36
+# srsly==2.5.0
+# sympy==1.13.3
+# tenacity==9.0.0
+# thinc==8.3.3
+# threadpoolctl==3.5.0
+# tokenizers==0.21.0
+# torch==2.2.2
+# tqdm==4.67.1
+# transformers==4.47.1
+# typer==0.15.1
+# typing-inspect==0.9.0
+# typing_extensions==4.12.2
+# urllib3==2.3.0
+# wasabi==1.1.3
+# weasel==0.4.1
+# wrapt==1.17.0
+# yarl==1.18.3
+# fastapi
+# uvicorn
+# rdflib

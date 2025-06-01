@@ -1,0 +1,21 @@
+- name: Create Docker CLI plugins directory
+  ansible.builtin.file:
+    path: /usr/local/lib/docker/cli-plugins
+    state: directory
+    mode: '0755'
+
+- name: Download Docker Compose v2 binary
+  ansible.builtin.get_url:
+    url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
+    dest: /usr/local/lib/docker/cli-plugins/docker-compose
+    mode: '0755'
+
+- name: Verify Docker Compose installation
+  ansible.builtin.command:
+    cmd: docker compose version
+  register: compose_version
+  changed_when: false
+
+- name: Show Docker Compose version
+  ansible.builtin.debug:
+    msg: "{{ compose_version.stdout }}"

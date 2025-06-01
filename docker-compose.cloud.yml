@@ -1,0 +1,44 @@
+
+services:
+  backend:
+    image: 686255962220.dkr.ecr.us-west-1.amazonaws.com/next9-backend-app-repo # ECR Repo
+    container_name: pdf_backend_prod
+    env_file:
+      - .prod.env # You might also have a production-specific .env file
+    # Or use 'environment:' for runtime variables
+    environment:
+       - APP_ENV=production
+       #- AWS_REGION_ENV=${AWS_REGION} # Pass AWS region as an environment variable
+    #   - DATABASE_URL=your_production_db_url
+    networks:
+      - pdf_network_prod # Consider using a different network name for prod
+    restart: unless-stopped
+    # Add logging configuration for production
+    logging:
+      driver: "awslogs" # Example: send logs to CloudWatch
+      options:
+        awslogs-group: "/ecs/pdfdocintel-backend-prod" # Adjust group name
+        awslogs-region: ${AWS_REGION}
+        #awslogs-stream-prefix: "backend"
+
+  frontend:
+    image: 686255962220.dkr.ecr.us-west-1.amazonaws.com/next9-frontend-app-repo # ECR Image
+    container_name: pdf_frontend_prod
+    ports:
+      - "80:80" # Common to use port 80 directly in production if no other web server on host
+                # Or "3000:80" if you still want to access it via port 3000 on EC2
+    depends_on:
+      - backend
+    networks:
+      - pdf_network_prod
+    restart: unless-stopped
+    logging:
+      driver: "awslogs"
+      options:
+        awslogs-group: "/ecs/pdfdocintel-frontend-prod"
+        awslogs-region: ${AWS_REGION}
+        #awslogs-stream-prefix: "frontend"
+
+networks:
+  pdf_network_prod: # Using a distinct network name for production
+    driver: bridge

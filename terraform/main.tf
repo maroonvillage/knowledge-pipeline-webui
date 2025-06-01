@@ -20,6 +20,7 @@ module "next9_s3" {
   ec2_role_name = module.next9_iam.ec2_role_name
   data_caller_identity_account_id = module.next9_iam.data_caller_identity_account_id
 }
+
 module "next9_ecr" {
   source = "./ecr"
   region = var.region

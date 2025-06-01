@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1      
 
 # 3. Set Working Directory
-WORKDIR /app
+WORKDIR /backend
 
 # 4. Install System Dependencies (if any)
 # RUN apt-get update && apt-get install -y --no-install-recommends some-package && rm -rf /var/lib/apt/lists/*
@@ -31,19 +31,19 @@ COPY . .
 
 
 # Copy the pre-built wheel file(s) into the image
-COPY ./dist /app/dist/
+COPY ./dist /backend/dist/
 
 # Install the local package from the wheel file
-RUN pip install --no-cache-dir /app/dist/pdfdocintel-0.1.0-py3-none-any.whl
+RUN pip install --no-cache-dir /backend/dist/pdfdocintel-0.1.0-py3-none-any.whl
 
 # Clean up the copied dist directory (optional, saves a bit of space)
-RUN rm -rf /app/dist
+RUN rm -rf /backend/dist
 
 # 7. Expose the Port the app runs on
 # This doesn't publish the port, just documents it. Publishing happens in docker-compose.yml.
-EXPOSE 8000
+EXPOSE 5001
 
 # 8. Command to Run the Application
 # Use uvicorn to run the FastAPI app. Adjust 'app.main:app' if your entry point is different.
 # Use '--host 0.0.0.0' to make it accessible from outside the container (within the Docker network).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001"]

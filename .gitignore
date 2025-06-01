@@ -47,3 +47,5 @@ ansible/terraform.tfstate
 backend/logs/app.log
 backend/logs/access.log
 .env
+.env.prod
+.prod.env

@@ -1,0 +1,95 @@
+---
+#push_to_ecr.yml
+- name: Deploy Docker Images to AWS ECR
+  hosts: localhost
+  connection: local
+  become: no
+  gather_facts: no
+  vars_files:
+    - ../group_vars/global_vars.yml # Ensure this file contains the necessary variables
+  vars: 
+    # --- Derived Variables for convenience ---
+    frontend_local_image_full: "{{ frontend_local_image_name }}:{{ frontend_local_image_tag }}"
+    frontend_ecr_image_full: "{{ ecr_registry_url }}/{{ frontend_ecr_repo_name }}:{{ frontend_ecr_image_tag }}"
+
+    backend_local_image_full: "{{ backend_local_image_name }}:{{ backend_local_image_tag }}"
+    backend_ecr_image_full: "{{ ecr_registry_url }}/{{ backend_ecr_repo_name }}:{{ backend_ecr_image_tag }}"
+
+  tasks:
+    - name: Ensure AWS CLI is installed (if using aws ecr get-login-password)
+      ansible.builtin.command: aws --version
+      register: aws_cli_check
+      changed_when: false
+      failed_when: aws_cli_check.rc != 0
+      check_mode: no # Always run this check
+      tags: prerequisites
+
+    - name: Assume IAM role
+      command: >
+        aws sts assume-role
+        --role-arn "{{ role_arn }}"
+        --role-session-name "ansible-ecr-push"
+      register: assumed_role
+
+    - name: Set temporary credentials
+      set_fact:
+        aws_access_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+        aws_secret_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+        aws_session_token: "{{ assumed_role.stdout | from_json | json_query('Credentials.SessionToken') }}"
+
+    - name: Get ECR login password
+      ansible.builtin.command: "aws ecr get-login-password --region {{ aws_region }}"
+      register: ecr_login_password_result
+      changed_when: false # This command itself doesn't change state
+      check_mode: no # Must run to get the password
+      no_log: true # Avoids logging the password
+      tags: ecr_login
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
+        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
+
+
+    - name: Login to ECR registry
+      shell: docker login -u AWS -p "{{ecr_login_password_result.stdout}}" {{account_id}}.dkr.ecr.{{aws_region}}.amazonaws.com
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
+        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
+      register: ecr_login
+
+    # --- Frontend Image Tasks ---
+    - name: Tag Frontend Docker image for ECR
+      command: docker tag {{ frontend_local_image_name }}:{{ frontend_local_image_tag }} "{{ ecr_registry_url }}/{{frontend_ecr_repo_name}}:{{ frontend_ecr_image_tag}}"
+
+
+    - name: Push Frontend Docker image to ECR
+      command: docker push "{{ ecr_registry_url }}/{{frontend_ecr_repo_name}}:{{ frontend_ecr_image_tag}}"
+
+
+    # --- Backend Image Tasks ---
+    - name: Tag Backend Docker image for ECR
+      command: docker tag {{ backend_local_image_name }}:{{ backend_local_image_tag }} "{{ ecr_registry_url }}/{{backend_ecr_repo_name}}:{{ backend_ecr_image_tag }}"
+
+
+    - name: Push Backend Docker image to ECR
+      command: docker push "{{ ecr_registry_url }}/{{backend_ecr_repo_name}}:{{ backend_ecr_image_tag}}"
+
+
+    - name: (Optional) Clean up local ECR-tagged images after push
+      block:
+        - name: Remove local ECR-tagged Frontend image
+          community.docker.docker_image:
+            name: "{{ frontend_ecr_image_full }}"
+            state: absent
+          when: cleanup_local_ecr_tags | default(false) # Control with a variable
+
+        - name: Remove local ECR-tagged Backend image
+          community.docker.docker_image:
+            name: "{{ backend_ecr_image_full }}"
+            state: absent
+          when: cleanup_local_ecr_tags | default(false)
+      rescue:
+        - name: Failed to clean up images, continuing...
+          ansible.builtin.debug:
+            msg: "Image cleanup failed for one or more images, but push was likely successful."

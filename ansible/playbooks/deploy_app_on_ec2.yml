@@ -1,0 +1,102 @@
+---
+#deploy_app_on_ec2.yml
+# -----------------------------------------------------------------------------
+# New Play for Docker Compose V2 Plugin Installation
+# -----------------------------------------------------------------------------
+- name: Deploy Application using Docker Compose on EC2
+  hosts: web # Or your specific EC2 host group, e.g., ec2_instances
+  become: yes
+  gather_facts: no # Or yes, if needed by any tasks
+  connection: ssh
+  vars_files:
+    - ../group_vars/global_vars.yml # Ensure this file contains the necessary variables
+
+  tasks:
+    # In your Ansible EC2 setup play
+    - name: Install Docker Compose (V2 Plugin)
+      ansible.builtin.shell: |
+        set -e # Exit on error
+        DOCKER_CONFIG=${DOCKER_CONFIG:-/home/ec2-user/.docker}
+        mkdir -p $DOCKER_CONFIG/cli-plugins
+        LATEST_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        curl -SL https://github.com/docker/compose/releases/download/${LATEST_COMPOSE_VERSION}/docker-compose-linux-$(uname -m) -o $DOCKER_CONFIG/cli-plugins/docker-compose
+        chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+      args:
+        #warn: no
+      changed_when: true # Assume changed as it's a download/install
+
+
+    - name: Update all packages
+      ansible.builtin.yum:
+        name: "*"
+        state: latest
+
+    - name: Authenticate Docker with ECR
+      include_tasks: ../roles/docker/install_docker-compose.yml
+
+    - name: Create a folder on EC2 instance
+      file:
+          path: /home/ec2-user/app
+          state: directory
+          owner: ec2-user
+          group: ec2-user
+          mode: '0755'
+      vars:
+        use_prod_env_file: true # Or your specific remote user
+
+    - name: Copy production Docker Compose file to EC2
+      ansible.builtin.copy:
+        src: ../../docker-compose.cloud.yml # Path on your Ansible control node
+        dest: /home/ec2-user/app/docker-compose.prod.yml # Path on the EC2 instance
+        owner: ec2-user
+        group: ec2-user
+        mode: '0644'
+
+    - name: Copy production .env file to EC2 (if used)
+      ansible.builtin.copy:
+        src: ../../.prod.env
+        dest: /home/ec2-user/app/.prod.env
+        owner: ec2-user
+        group: ec2-user
+        mode: '0640' # More restrictive permissions for .env
+      #when: use_prod_env_file | default(false) # Control with a variable
+
+    - name: Assume IAM role
+      command: >
+        aws sts assume-role
+        --role-arn "{{ role_arn }}"
+        --role-session-name "ansible-ecr-pull"
+      register: assumed_role
+
+    - name: Set temporary credentials
+      set_fact:
+        aws_access_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+        aws_secret_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+        aws_session_token: "{{ assumed_role.stdout | from_json | json_query('Credentials.SessionToken') }}"
+
+    - name: Get ECR login password
+      ansible.builtin.command: "aws ecr get-login-password --region {{ aws_region }}"
+      register: ecr_login_password_result
+      changed_when: false # This command itself doesn't change state
+      check_mode: no # Must run to get the password
+      no_log: true # Avoids logging the password
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
+        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
+
+    - name: Authenticate Docker with AWS ECR
+      ansible.builtin.shell: >
+        echo "{{ ecr_login_password_result.stdout }}" |
+        docker login --username AWS --password-stdin 686255962220.dkr.ecr.us-west-1.amazonaws.com
+
+    - name: Start application services on EC2 using production compose file
+      community.docker.docker_compose_v2:
+        project_src: /home/ec2-user/app/
+        files:
+          - docker-compose.prod.yml
+        state: present # Ensures services are up (equivalent to docker-compose up -d)
+        recreate: never # Recreate containers if config or image changes
+      environment:
+          AWS_REGION: "us-west-1"
+

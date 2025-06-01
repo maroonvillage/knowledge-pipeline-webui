@@ -17,7 +17,13 @@ resource "aws_security_group" "sg" {
     cidr_blocks = ["${var.local_ip}/32"] # Make sure to narrow this down!
   }
 
-  egress {
+  ingress {
+      from_port   = 3000
+      to_port     = 3000
+      protocol    = "tcp"
+      cidr_blocks = ["${var.local_ip}/32"]  #  Make sure to narrow this down!
+    }
+  egress {  
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

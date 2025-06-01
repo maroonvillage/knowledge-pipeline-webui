@@ -1,55 +1,19 @@
+# deploy.yml
 ---
-- hosts: localhost
-  connection: local
-  become: no
-  vars:
-    aws_region: "us-west-1" # Replace with your AWS region
-    ecr_repository: "686255962220.dkr.ecr.us-west-1.amazonaws.com/next9_ecr_repository" # Replace with your ECR repository URL
-    role_arn: "arn:aws:iam::686255962220:role/pdfdocintel-monolith-role"  # Replace with your role ARN
-    image_name: "knowledge-pipeline-webui-backend"
-    image_tag: "latest"
+# This is the main playbook that orchestrates other playbooks.
+# Variables can be defined here, in group_vars/all.yml, or passed via -e.
 
-  tasks:
-    - name: Assume IAM role
-      command: >
-        aws sts assume-role
-        --role-arn "{{ role_arn }}"
-        --role-session-name "ansible-ecr-push"
-      register: assumed_role
+# - name: Import ECR Deployment Playbook
+#   ansible.builtin.import_playbook: playbooks/push_to_ecr.yml
+#   tags:
+#     - ecr # Tag for running only the ECR push
 
-    - name: Set temporary credentials
-      set_fact:
-        aws_access_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ assumed_role.stdout | from_json | json_query('Credentials.SessionToken') }}"
+# - name: Import EC2 Docker Setup Playbook
+#   ansible.builtin.import_playbook: playbooks/setup_docker.yml
+#   tags:
+#     - setup_docker # Tag for running only the Docker setup
 
-    - name: Get ECR login password
-      command: aws ecr get-login-password --region "{{ aws_region }}"
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
-        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
-        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
-      register: ecr_password
-
-    - name: Login to ECR registry
-      shell: docker login -u AWS -p "{{ecr_password.stdout}}" {{ ecr_repository }}
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
-        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
-        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
-      register: test
-
-    - name: Tag the image
-      command: docker tag {{ image_name }}:{{ image_tag }} "{{ ecr_repository }}:{{ image_tag }}"
-
-    - name: Push image to ECR
-      command: docker push "{{ ecr_repository }}:{{ image_tag }}"
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required
-        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required
-        AWS_SESSION_TOKEN: "{{ aws_session_token }}"  # Required if the role requires MFA
-
-- hosts: all
-  become: yes  # Run tasks as root
-  roles:
-    - docker
+- name: Import EC2 Application Deployment Playbook
+  ansible.builtin.import_playbook: playbooks/deploy_app_on_ec2.yml
+  tags:
+    - deploy_app # Tag for deploying the application on EC2 (compose, pull, run)

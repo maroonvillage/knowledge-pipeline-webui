@@ -1,0 +1,6 @@
+- name: Authenticate Docker with ECR
+  command: >
+    aws ecr get-login-password --region us-west-1 |
+    docker login --username AWS --password-stdin 686255962220.dkr.ecr.us-west-1.amazonaws.com
+  register: ecr_login
+  failed_when: ecr_login.rc != 0
