@@ -8,5 +8,5 @@ terraform {
 }
 
 provider "aws" {
-  region = var.region # Replace with your desired region
+  region = "us-west-1" # Replace with your desired region
 }

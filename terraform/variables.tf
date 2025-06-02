@@ -1,4 +1,5 @@
-variable "region" {
-  type    = string
-  default = "us-west-1"
+variable "prefix" {
+  description = "A prefix for resource names"
+  type        = string
+  default     = "pdfdocintel" # Example prefix
 }
