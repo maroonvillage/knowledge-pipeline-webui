@@ -2,7 +2,7 @@ aws_region: "us-west-1" # Replace with your AWS region
 account_id: "686255962220" # Replace with your AWS account ID
 ecr_repo_name: "next9_ecr_repository"
 ecr_registry_url: "{{ account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com"
-role_arn: "arn:aws:iam::{{account_id}}:role/pdfdocintel-monolith-role"  # Replace with your role ARN
+role_arn: "arn:aws:iam::{{account_id}}:role/pdfdocintel-ec2-instance-role"  # Replace with your role ARN
 
 # Frontend Image Details
 frontend_local_image_name: "knowledge-pipeline-webui-frontend"

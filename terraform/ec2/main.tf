@@ -21,3 +21,13 @@ resource "aws_instance" "app_server" {
     Name = "ExampleAppServerInstance"
   }
 }
+
+resource "aws_cloudwatch_log_group" "backend" {
+  name = "/ecs/pdfdocintel-backend-prod"
+  retention_in_days = 14
+}
+
+resource "aws_cloudwatch_log_group" "frontend" {
+  name = "/ecs/pdfdocintel-frontend-prod"
+  retention_in_days = 14
+}

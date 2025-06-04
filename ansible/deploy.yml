@@ -8,10 +8,10 @@
 #   tags:
 #     - ecr # Tag for running only the ECR push
 
-# - name: Import EC2 Docker Setup Playbook
-#   ansible.builtin.import_playbook: playbooks/setup_docker.yml
-#   tags:
-#     - setup_docker # Tag for running only the Docker setup
+- name: Import EC2 Docker Setup Playbook
+  ansible.builtin.import_playbook: playbooks/setup_docker.yml
+  tags:
+    - setup_docker # Tag for running only the Docker setup
 
 - name: Import EC2 Application Deployment Playbook
   ansible.builtin.import_playbook: playbooks/deploy_app_on_ec2.yml

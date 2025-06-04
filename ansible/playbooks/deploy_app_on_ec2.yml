@@ -61,34 +61,37 @@
         mode: '0640' # More restrictive permissions for .env
       #when: use_prod_env_file | default(false) # Control with a variable
 
-    - name: Assume IAM role
-      command: >
-        aws sts assume-role
-        --role-arn "{{ role_arn }}"
-        --role-session-name "ansible-ecr-pull"
-      register: assumed_role
+    # - name: Assume IAM role
+    #   command: >
+    #     aws sts assume-role
+    #     --role-arn "{{ role_arn }}"
+    #     --role-session-name "ansible-ecr-pull"
+    #   register: assumed_role
 
-    - name: Set temporary credentials
-      set_fact:
-        aws_access_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ assumed_role.stdout | from_json | json_query('Credentials.SessionToken') }}"
+    # - name: Set temporary credentials
+    #   set_fact:
+    #     aws_access_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+    #     aws_secret_key: "{{ assumed_role.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+    #     aws_session_token: "{{ assumed_role.stdout | from_json | json_query('Credentials.SessionToken') }}"
 
     - name: Get ECR login password
       ansible.builtin.command: "aws ecr get-login-password --region {{ aws_region }}"
       register: ecr_login_password_result
       changed_when: false # This command itself doesn't change state
       check_mode: no # Must run to get the password
-      no_log: true # Avoids logging the password
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
-        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
-        AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
+      no_log: true # Avoids logging the password  
+      # environment:
+      #   AWS_ACCESS_KEY_ID: "{{ aws_access_key }}" #Required, was previously removed.
+      #   AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}" #Required, was previously removed
+      #   AWS_SESSION_TOKEN: "{{ aws_session_token }}" # Required, was previously removed
 
     - name: Authenticate Docker with AWS ECR
       ansible.builtin.shell: >
         echo "{{ ecr_login_password_result.stdout }}" |
         docker login --username AWS --password-stdin 686255962220.dkr.ecr.us-west-1.amazonaws.com
+      # args:
+      #   warn: no
+      #   changed_when: false
 
     - name: Start application services on EC2 using production compose file
       community.docker.docker_compose_v2:

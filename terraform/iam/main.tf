@@ -11,13 +11,29 @@ resource "aws_iam_role" "ec2_app_instance_role" { # New, descriptive local name
   # Trust policy allowing EC2 service to assume this role
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [
-      {
-        Action    = "sts:AssumeRole",
-        Effect    = "Allow",
-        Principal = { Service = "ec2.amazonaws.com" }
-      }
-    ]
+    Statement = concat(
+      [
+        {
+          Action    = "sts:AssumeRole",
+          Effect    = "Allow",
+          Principal = { Service = "ec2.amazonaws.com" }
+        }
+      ],
+      var.allow_user_to_assume_ec2_role_arn != "" ? [
+        {
+          Effect = "Allow",
+          Principal = {
+            AWS = var.allow_user_to_assume_ec2_role_arn
+          },
+          Action = "sts:AssumeRole"
+          # Sid    = "AllowSpecificUserToAssumeRole" # Optional Statement ID
+          # Optional: Add a condition, e.g., require MFA
+          # Condition = {
+          #   "Bool": { "aws:MultiFactorAuthPresent": "true" }
+          # }
+        }
+      ] : []
+    )
   })
 
   tags = {
