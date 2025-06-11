@@ -18,3 +18,7 @@ variable "data_caller_identity_account_id" {
   type        = string
 }
 
+variable "ec2_dns_name" {
+  description = "Public DNS"
+  type        = string
+}

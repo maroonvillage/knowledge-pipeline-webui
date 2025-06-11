@@ -3,10 +3,10 @@
 # This is the main playbook that orchestrates other playbooks.
 # Variables can be defined here, in group_vars/all.yml, or passed via -e.
 
-# - name: Import ECR Deployment Playbook
-#   ansible.builtin.import_playbook: playbooks/push_to_ecr.yml
-#   tags:
-#     - ecr # Tag for running only the ECR push
+- name: Import ECR Deployment Playbook
+  ansible.builtin.import_playbook: playbooks/push_to_ecr.yml
+  tags:
+    - ecr # Tag for running only the ECR push
 
 - name: Import EC2 Docker Setup Playbook
   ansible.builtin.import_playbook: playbooks/setup_docker.yml

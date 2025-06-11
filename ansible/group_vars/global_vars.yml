@@ -9,7 +9,8 @@ frontend_local_image_name: "knowledge-pipeline-webui-frontend"
 frontend_local_image_tag: "latest" # Or a dynamic tag like git commit hash
 frontend_ecr_repo_name: "next9-frontend-app-repo"
 frontend_ecr_image_tag: "{{ frontend_local_image_tag }}" # Keep tags consistent or define differently
-
+deployed_frontend_url_http: ""
+deployed_frontend_url_https: ""
 
 # Backend Image Details
 backend_local_image_name: "knowledge-pipeline-webui-backend"

@@ -92,11 +92,14 @@ logger = logging.getLogger("knowledge_pipeline_webui_logger")
 
 app = FastAPI()
 
-# Configure CORS
-origins = [
-    "http://localhost:3000",  # Add your React app's URL here
-    "http://127.0.0.1:3000",  # Add this as well if you use 127.0.0.1 instead
-]
+# --- CORS Configuration ---
+# Best practice: Make origins configurable via environment variables
+
+# Default origins for local development
+ALLOWED_ORIGINS_STR = os.getenv("ALLOWED_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+
+# Split the string into a list, stripping whitespace
+origins = [origin.strip() for origin in ALLOWED_ORIGINS_STR.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
@@ -174,12 +177,15 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @app.get("/generate-presigned-url/{filepath:path}")
-async def generate_presigned_url(filepath: str):
+async def generate_presigned_url(
+    filepath: str,
+    content_type: str = 'application/octet-stream'):
     """
     Generates a presigned URL for uploading a file directly to S3.
     """
-    filename = unquote(filepath)  # Decode the filename
-    #content_type = unquote(content_type)  # Decode the content type
+    decoded_filename = unquote(filepath)  # Decode the filename
+    decoded_content_type = unquote(content_type)  # Decode the content type
+    
     bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
     if not bucket_name:
         raise HTTPException(status_code=500, detail="S3 bucket name not configured on server.")
@@ -187,17 +193,16 @@ async def generate_presigned_url(filepath: str):
     # Generate a unique object key for S3
     # You might want a different strategy, e.g., include user ID, timestamp, etc.
     # Sanitize filename to prevent path traversal or unwanted characters
-    sanitized_filename = "".join(c if c.isalnum() or c in ['.', '-', '_'] else '_' for c in filename)
+    sanitized_filename = "".join(c if c.isalnum() or c in ['.', '-', '_'] else '_' for c in decoded_filename)
     #object_key = f"uploads/{uuid.uuid4()}/{sanitized_filename}"
-    object_key = f"uploads/{filename}"
+    object_key = f"uploads/{decoded_filename}"
     try:
         presigned_url_response = s3_client.generate_presigned_url(
             'put_object',
             Params={
                 'Bucket': bucket_name,
                 'Key': object_key,
-                'ContentType': "application/pdf"
-                # 'ACL': 'private' # Or 'public-read' if needed, but usually manage via bucket policy
+                'ContentType': decoded_content_type
                 # You can add other parameters like 'Metadata'
             },
             ExpiresIn=3600  # URL expires in 1 hour (3600 seconds)
@@ -534,43 +539,11 @@ async def main(filename: str):
 
 if __name__ == "__main__":
     
-    #async def main():
+    async def main():
         print("Starting FastAPI server...")
         import uvicorn
         uvicorn.run(app, host="0.0.0.0", port=5001)
         
-        #await call_pdfdocintel_get_tables_file_s3("next9bucket01", "uploads/AI_Risk_Management-NIST.AI.100-1.pdf", "_tables", 0)
-        
-        #filename = './files/uploads/ISO+IEC+23894-2023.pdf'
-        
-        #asyncio.run(clear_data(filename=filename))
-        # prefix =  asyncio.run(get_filename_prefix(filename, FILE_PREFIX_LENGTH))
-        # print(prefix)
-        # filename_segment = f'{prefix}{FILENAME_SEGMENT_QRY_RESULTS}'
-        # print(filename_segment)
-        # for filename in os.listdir(CSV_FOLDER):
-        #      if(filename.startswith(filename_segment) and filename.endswith('.csv')):
-        #         print("file exists")
-        #         break
-            
-        #      print("file does NOT exist.")
-        #asyncio.run(main("AI_Risk_Management-NIST.AI.100-1.pdf"))
-        
-        # print(type(get_file_metadata_from_s3))
-        
-        
-    #     print(FILE_STORAGE['cloud_config']['bucket_name'])
-        #bucket_name = FILE_STORAGE['cloud_config']['bucket_name']
-    #     metadata_dict = await get_file_metadata_from_s3('next9bucket01','uploads/AI_Risk_Management-NIST.AI.100-1.pdf')
-    #     if(metadata_dict):
-    #         if metadata_dict:
-    #             print(f"Retrieved metadata from S3: {json.dumps(metadata_dict, indent=2)}")
-    #             #print(f"Retrieved metadata from S3: {metadata_dict['Key']}")
-    #         else:
-    #             print(f"No metadata found for the key: uploads/AI_Risk_Management-NIST.AI.100-1.pdf in bucket: {FILE_STORAGE['cloud_config']['bucket_name']}")
-                
-    # asyncio.run(main())
-    
     
     
    

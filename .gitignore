@@ -49,3 +49,4 @@ backend/logs/access.log
 .env
 .env.prod
 .prod.env
+terraform.tfstate

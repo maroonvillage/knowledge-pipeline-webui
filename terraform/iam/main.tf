@@ -96,9 +96,10 @@ resource "aws_iam_role_policy_attachment" "ec2_secrets_manager_access" {
   # Better: Create a custom policy granting read access to specific secret ARNs.
   policy_arn = "arn:aws:iam::686255962220:policy/pdfdocintel-monolith-secretsmgr" # Example, refine this
 }
-/*
+
+
 # Example Custom Secrets Manager Policy (More Secure)
-resource "aws_iam_policy" "ec2_secrets_custom_policy" {
+/* resource "aws_iam_policy" "ec2_secrets_custom_policy" {
   name        = "${var.prefix}-EC2SecretsCustomReadPolicy"
   description = "Custom Secrets Manager read access for EC2"
   policy = jsonencode({
@@ -108,7 +109,8 @@ resource "aws_iam_policy" "ec2_secrets_custom_policy" {
         Effect = "Allow",
         Action = "secretsmanager:GetSecretValue",
         Resource = [
-          "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:your-app-secret-*"
+          "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:dev/pdfdocintel/neo4jauthpwd-eIWxPx",
+          "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:dev/pdfdocintel/pineconeapikey-4CtXUZ" # Example ARNs
           // Add ARNs of specific secrets needed
         ]
       }
@@ -118,8 +120,8 @@ resource "aws_iam_policy" "ec2_secrets_custom_policy" {
 resource "aws_iam_role_policy_attachment" "ec2_secrets_custom_attachment" {
   role       = aws_iam_role.ec2_app_instance_role.name
   policy_arn = aws_iam_policy.ec2_secrets_custom_policy.arn
-}
-*/
+}  */
+
 
 # CloudWatch Logs Access (for Docker's awslogs driver)
 resource "aws_iam_policy" "ec2_cloudwatch_logs_policy" {

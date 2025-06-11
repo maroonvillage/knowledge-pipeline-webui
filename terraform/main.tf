@@ -19,13 +19,6 @@ module "next9_iam" {
   aws_region                           = data.aws_region.current.name
 }
 
-module "next9_s3" {
-  source = "./s3"
-  region =  data.aws_region.current.name
-  ec2_role_name = module.next9_iam.ec2_instance_profile_name
-  data_caller_identity_account_id = module.next9_iam.data_caller_identity_account_id
-}
-
 module "next9_ecr" {
   source = "./ecr"
   region = data.aws_region.current.name
@@ -34,4 +27,12 @@ module "next9_ec2" {
   source = "./ec2"
   ec2_instance_profile_var = module.next9_iam.ec2_instance_profile_name
   region = data.aws_region.current.name
+}
+
+module "next9_s3" {
+  source = "./s3"
+  region =  data.aws_region.current.name
+  ec2_role_name = module.next9_iam.ec2_instance_profile_name
+  data_caller_identity_account_id = module.next9_iam.data_caller_identity_account_id
+  ec2_dns_name = module.next9_ec2.instance_public_dns
 }

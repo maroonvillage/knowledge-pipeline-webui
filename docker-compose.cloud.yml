@@ -8,6 +8,7 @@ services:
     # Or use 'environment:' for runtime variables
     environment:
        - APP_ENV=production
+       - ALLOWED_CORS_ORIGINS=http://50.18.89.31:3000,https://50.18.89.31:3000,https://ec2-50-18-89-31.us-west-1.compute.amazonaws.com,http://ec2-50-18-89-31.us-west-1.compute.amazonaws.com
        #- AWS_REGION_ENV=${AWS_REGION} # Pass AWS region as an environment variable
     #   - DATABASE_URL=your_production_db_url
     networks:

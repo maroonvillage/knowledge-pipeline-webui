@@ -3,7 +3,7 @@ import { Button, Typography, Box, LinearProgress, Alert } from '@mui/material';
 
 function DocumentIngestionOptions() {
     const fileInputRef = useRef(null);
-    const [file, setFile] = useState(null);
+    const [selectedFile, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     //const [uploadStatus, setUploadStatus] = useState('');
@@ -16,14 +16,14 @@ const handleFileSelect = (event) => {
         const selectedFile = event.target.files[0];
         if (selectedFile) {
             setFile(selectedFile);
-            setUploadStatus('');
+            setUploadStatus({ message: '', type: '' }); // Set as object or reset to initial object state
             setUploadProgress(0);
         }
     };
 
 const handleUpload = async () => {
-    if (!file) {
-        setUploadStatus("Please select a file");
+    if (!selectedFile) {
+        setUploadStatus({ message: "Please select a file", type: "error" });
         return;
     }
     setUploading(true);
@@ -31,85 +31,134 @@ const handleUpload = async () => {
     setUploadStatus({ message: 'Preparing upload...', type: 'info' })
 
     const formData = new FormData();
-    formData.append('file', file);
-
-
+    formData.append('file', selectedFile);
+    // STAGE 1: Get Presigned URL
+    
     try {
-/*       const response = await fetch(`/api/upload`, {
-            method: 'POST',
-            body: formData,
-      });
-        if (response.ok) {
-           const result = await response.json();
-           //setUploadStatus(`Upload Successful! Filename: ${result.filename}`);
-           setUploadStatus(`Upload Successful! Filename: ${result.filename}, File size: ${result.size}, File change time: ${result.time}`);
-        } else{
-            const errorData = await response.json();
-            setUploadStatus(`Upload failed with error: ${errorData.error}`)
-        } */
+        let uploadUrl, objectKey;
+        try {
+            // 1. Get Presigned URL from your backend
+            // Pass filename and content_type as query parameters
+                const params = new URLSearchParams({
+                    filename: encodeURIComponent(selectedFile.name),
+                    content_type: selectedFile.type || 'application/octet-stream' // Fallback if file.type is missing
+                });
 
-        // 1. Get Presigned URL from your backend
-            // Ensure your React dev server proxy or Nginx proxy is set up for /api routes
-        const presignedUrlResponse = await fetch(
-            // Make sure your API prefix is correct for your setup (proxy or Nginx)
-            `/api/generate-presigned-url/${encodeURIComponent(file.name)}`
-            );
-            if (!presignedUrlResponse.ok) {
-                const errorData = await presignedUrlResponse.json().catch(() => ({ detail: "Failed to get upload URL." }));
-                throw new Error(errorData.detail || `Failed to get upload URL: ${presignedUrlResponse.statusText}`);
+                const presignedUrlEndpoint = `/api/generate-presigned-url?${params.toString()}`;
+                // Ensure your React dev server proxy or Nginx proxy is set up for /api routes
+                // const presignedUrlResponse = await fetch(
+                //     // Make sure your API prefix is correct for your setup (proxy or Nginx)
+                //     `/api/generate-presigned-url/${encodeURIComponent(file.name)}`
+                //     );
+                const presignedUrlResponse = await fetch(presignedUrlEndpoint);
+
+                if (!presignedUrlResponse.ok) {
+                    //const errorData = await presignedUrlResponse.json().catch(() => ({ detail: "Failed to get upload URL." }));
+                    //throw new Error(errorData.detail || `Failed to get upload URL: ${presignedUrlResponse.statusText}`);
+                    // Try to parse JSON, if it fails, get text, then throw.
+                    let errorDetailMessage = `Failed to get upload URL: ${presignedUrlResponse.status} ${presignedUrlResponse.statusText}`;
+                    try {
+                        const errorData = await presignedUrlResponse.json();
+                        errorDetailMessage = errorData.detail || errorDetailMessage;
+                    } catch (jsonParseError) {
+                        try {
+                            const textError = await presignedUrlResponse.text();
+                            console.error("Non-JSON error response from presigned URL endpoint:", textError.substring(0, 500));
+                            errorDetailMessage += ` - Server Response: ${textError.substring(0,100)}`;
+                        } catch (textParseError) {
+                            console.error("Could not parse error response as JSON or text.");
+                        }
+                    }
+                    throw new Error(errorDetailMessage);
+                }
+                const jsonData = await presignedUrlResponse.json();
+                uploadUrl = jsonData.uploadUrl;
+                objectKey = jsonData.objectKey;
+                console.log('[DEBUG] Got presigned URL:', uploadUrl, 'Object Key:', objectKey);
+            } catch (presignedError) {
+                console.error("ERROR GETTING PRESIGNED URL:", presignedError);
+                setUploadStatus({ message: `Failed to prepare upload: ${presignedError.message}`, type: 'error' });
+                setUploading(false);
+                return; // Stop further execution
             }
-            const { uploadUrl, objectKey } = await presignedUrlResponse.json();
+
             setUploadStatus({ message: 'Uploading to S3...', type: 'info' });
+            try {
+                // 2. Upload the file directly to S3 using the presigned URL
+                const xhr = new XMLHttpRequest(); // Using XHR for progress tracking
 
-            // 2. Upload the file directly to S3 using the presigned URL
-            const xhr = new XMLHttpRequest(); // Using XHR for progress tracking
+                xhr.open('PUT', uploadUrl, true);
+                xhr.setRequestHeader('Content-Type', selectedFile.type || 'application/octet-stream');
+                console.log('[DEBUG] XHR opened. Uploading with Content-Type:', selectedFile.type || 'application/octet-stream');
+                // You might need to set other headers if your S3 policy/CORS requires them,
+                // or if you included them in the presigned URL generation (e.g., x-amz-acl)
 
-            xhr.open('PUT', uploadUrl, true);
-            xhr.setRequestHeader('Content-Type', file.type);
-            // You might need to set other headers if your S3 policy/CORS requires them,
-            // or if you included them in the presigned URL generation (e.g., x-amz-acl)
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(percentComplete);
+                    }
+                };
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    setUploadProgress(percentComplete);
-                }
-            };
+                xhr.onload = () => {
+                    console.log('[DEBUG] XHR onload triggered. Status:', xhr.status);
+                    try{
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            setUploadStatus({ message: `File uploaded successfully! Object key: ${objectKey}`, type: 'success' });
+                            console.log('S3 Upload successful, ETag:', xhr.getResponseHeader('ETag'));
 
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    setUploadStatus({ message: `File uploaded successfully! Object key: ${objectKey}`, type: 'success' });
-                    console.log('S3 Upload successful, ETag:', xhr.getResponseHeader('ETag'));
+                            // You might want to notify your backend that the upload is complete
+                            // and pass the objectKey or other metadata.
+                            // E.g., fetch('/api/file-upload-complete', { method: 'POST', body: JSON.stringify({ objectKey, filename: selectedFile.name }) });
+                            //file(null); // Clear selection after successful upload
+                            setFile(null); // Clear selected file
+                            if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
+                        } else {
+                            let s3ErrorMessage = `S3 upload failed: ${xhr.status} ${xhr.statusText}`;
+                            if (xhr.responseText) {
+                                console.error('[DEBUG] S3 Raw Error Response:', xhr.responseText);
+                                const parser = new DOMParser();
+                                const xmlDoc = parser.parseFromString(xhr.responseText, "text/xml");
+                                const messageNode = xmlDoc.getElementsByTagName("Message")[0];
+                                if (messageNode) {
+                                    s3ErrorMessage += ` - S3 Message: ${messageNode.textContent}`;
+                                }
+                            }
+                            setUploadStatus({ message: s3ErrorMessage, type: 'error' });
+                            console.error('S3 Upload Error:', xhr.status, xhr.responseText);
+                        }
+                    } catch (onloadError) {
+                        console.error("ERROR IN XHR ONLOAD LOGIC:", onloadError);
+                        setUploadStatus({ message: `Error processing upload response: ${onloadError.message}`, type: 'error' });
+                    } finally {
+                        setUploading(false);
+                    }
+                };
 
-                    // You might want to notify your backend that the upload is complete
-                    // and pass the objectKey or other metadata.
-                    // E.g., fetch('/api/file-upload-complete', { method: 'POST', body: JSON.stringify({ objectKey, filename: selectedFile.name }) });
-                    //file(null); // Clear selection after successful upload
-                    setFile(null); // Clear selected file
-                    if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
-                } else {
-                    setUploadStatus({ message: `S3 upload failed: ${xhr.status} ${xhr.statusText} - ${xhr.responseText.substring(0,100)}`, type: 'error' });
-                    console.error('S3 Upload Error:', xhr.status, xhr.responseText);
-                }
+                xhr.onerror = () => {
+                    try {
+                        setUploadStatus({ message: 'S3 upload failed due to network error or CORS issue.', type: 'error' });
+                        console.error('S3 Upload Network Error or CORS. Check S3 bucket CORS configuration and network.');
+                    } catch (onerrorError) {
+                        console.error("ERROR IN XHR ONERROR LOGIC:", onerrorError);
+                    } finally {
+                        setUploading(false);
+                    }
+                };
+
+                xhr.send(selectedFile);
+                console.log('[DEBUG] XHR send initiated.');
+            } catch (s3UploadError) {
+                console.error("ERROR INITIATING S3 UPLOAD (XHR setup/send):", s3UploadError);
+                setUploadStatus({ message: `S3 upload initiation failed: ${s3UploadError.message}`, type: 'error' });
                 setUploading(false);
-            };
-
-            xhr.onerror = () => {
-                setUploadStatus({ message: 'S3 upload failed due to network error or CORS issue.', type: 'error' });
-                console.error('S3 Upload Network Error or CORS. Check S3 bucket CORS configuration and network.');
-                setUploading(false);
-            };
-
-            xhr.send(file);
-
-    } catch (error) {
-         setUploadStatus(`Upload Failed with error: ${error.message}`)
-       console.error('There was an error:', error);
+            }
+    } catch (generalError) {
+         setUploadStatus({ message: `Upload Failed with error: ${generalError.message}`, type: 'error' });
+       //console.error('There was an error:', error);
     } finally {
        setUploading(false);
     }
-
-
 };
 
 return (
@@ -124,16 +173,16 @@ return (
                 onChange={handleFileSelect}
             />
         </Button>
-        {file && (
+        {selectedFile && (
             <Typography variant="body1">
-                Selected: {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
             </Typography>
         )}
         <Button
             variant="contained"
             color="primary"
             onClick={handleUpload}
-            disabled={!file || uploading}
+            disabled={!selectedFile || uploading}
         >
             {uploading ? `Uploading... ${uploadProgress}%` : 'Upload to S3'}
         </Button>

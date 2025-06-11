@@ -14,7 +14,29 @@ resource "aws_s3_bucket" "pdfdocintel" {
   }
 }
 
-# Simulate a folder named "logs/"
+resource "aws_s3_bucket_public_access_block" "pdfdocintel" {
+  bucket = aws_s3_bucket.pdfdocintel.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true  
+  restrict_public_buckets = true
+}
+
+
+resource "aws_s3_bucket_cors_configuration" "pdfdocintel" {
+  bucket = aws_s3_bucket.pdfdocintel.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT", "POST", "DELETE"]
+    allowed_origins = ["https://${var.ec2_dns_name},http://${var.ec2_dns_name}"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
+# Simulate a folder named "uploads/"
 resource "aws_s3_object" "uploads" {
   bucket = aws_s3_bucket.pdfdocintel.bucket
   key    = "uploads/"  # Folder-like structure
@@ -34,7 +56,8 @@ resource "aws_s3_bucket_policy" "s3_bucket_policy" {
         },
         "Action": [
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:PutObject"
         ],
         "Resource": [
            aws_s3_bucket.pdfdocintel.arn,
