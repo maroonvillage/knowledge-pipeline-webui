@@ -1,0 +1,10 @@
+- name: Run certbot renew (does nothing unless expiry ≤ 30 days)
+  become: true
+  command: >
+    certbot renew --non-interactive
+                  --deploy-hook "systemctl reload nginx"
+  register: renew_result
+
+- name: Show renewal summary
+  debug:
+    msg: "{{ renew_result.stdout }}"

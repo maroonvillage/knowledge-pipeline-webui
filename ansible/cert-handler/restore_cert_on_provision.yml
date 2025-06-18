@@ -1,0 +1,34 @@
+---
+- name: Restore Let's Encrypt cert from S3 to EC2
+  hosts: ec2
+  become: true
+  vars_files:
+    - group_vars/ec2.yml
+  tasks:
+
+    - name: Install unzip and awscli
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      loop: [unzip, awscli]
+
+    - name: Download cert backup from S3
+      ansible.builtin.command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ s3_key }} {{ letsencrypt_zip }}
+      args:
+        creates: "{{ letsencrypt_zip }}"
+
+    - name: Unarchive cert into root
+      ansible.builtin.unarchive:
+        src: "{{ letsencrypt_zip }}"
+        dest: /
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Ensure correct permissions
+      ansible.builtin.file:
+        path: /etc/letsencrypt
+        owner: root
+        group: root
+        mode: '0700'
+        recurse: yes

@@ -1,0 +1,23 @@
+---
+- name: Backup Let's Encrypt cert and copy to local machine
+  hosts: ec2
+  become: true
+  vars_files:
+    - group_vars/ec2.yml
+  tasks:
+
+    - name: Ensure zip and awscli are installed
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      loop: [zip, awscli]
+
+    - name: Zip Let's Encrypt certs
+      ansible.builtin.command: >
+        zip -r {{ letsencrypt_zip }} {{ letsencrypt_dir }}
+      args:
+        creates: "{{ letsencrypt_zip }}"
+
+    - name: Upload cert backup to S3
+      ansible.builtin.command: >
+        aws s3 cp {{ letsencrypt_zip }} s3://{{ s3_bucket_name }}/{{ s3_key }}

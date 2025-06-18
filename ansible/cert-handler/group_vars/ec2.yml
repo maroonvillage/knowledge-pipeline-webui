@@ -1,0 +1,5 @@
+s3_bucket_name: my-ssl-backup-bucket
+domain_name: example.com
+s3_key: letsencrypt/{{ domain_name }}.zip
+letsencrypt_dir: /etc/letsencrypt
+letsencrypt_zip: /tmp/letsencrypt.zip

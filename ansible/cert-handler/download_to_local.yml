@@ -1,0 +1,13 @@
+- name: Download cert backup from S3 to local machine
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - group_vars/localhost.yml
+  tasks:
+    - name: Ensure AWS CLI is installed
+      ansible.builtin.command: aws --version
+
+    - name: Download cert zip to local system
+      ansible.builtin.command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ s3_key }} {{ local_download_path }}

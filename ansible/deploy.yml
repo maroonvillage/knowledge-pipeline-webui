@@ -13,7 +13,28 @@
   tags:
     - setup_docker # Tag for running only the Docker setup
 
+
+- name: Restore SSL Certificate On Provision  
+  ansible.builtin.import_playbook: cert-handler/restore_cert_on_provision.yml
+  tags:
+    - restore_cert
+
+- name: Renew SSL Certificate  
+  ansible.builtin.import_playbook: cert-handler/renew_cert.yml
+  tags:
+    - renew_cert
+
+- name: Backup SSL Certificate
+  ansible.builtin.import_playbook: cert-handler/backup_cert_on_teardown.yml
+  tags:
+    - backup_cert
+
+- name: Download SSL Certificate to Local
+  ansible.builtin.import_playbook: cert-handler/download_to_local.yml
+  tags:
+    - download_cert_to_local
+
 - name: Import EC2 Application Deployment Playbook
-  ansible.builtin.import_playbook: playbooks/deploy_app_on_ec2.yml
+  ansible.builtin.import_playbook: cert-handler/deploy_app_on_ec2.yml
   tags:
     - deploy_app # Tag for deploying the application on EC2 (compose, pull, run)

@@ -1,0 +1,40 @@
+---
+- name: Install Certbot and dependencies
+  hosts: ec2
+  become: true
+  gather_facts: true
+
+  vars:
+    certbot_packages:
+      - python3
+      - python3-pip
+      - python3-devel
+      - augeas-devel
+      - gcc
+
+  tasks:
+
+    - name: Remove any existing Certbot installed via dnf
+      ansible.builtin.dnf:
+        name: certbot
+        state: absent
+        
+    - name: Ensure required packages are installed
+      ansible.builtin.dnf:
+        name: "{{ certbot_packages }}"
+        state: present
+        update_cache: true
+
+    - name: Install Certbot using pip
+      ansible.builtin.pip:
+        name: certbot
+        executable: pip3
+        state: present
+
+    - name: Verify Certbot installation
+      ansible.builtin.command: certbot --version
+      register: certbot_version
+
+    - name: Show Certbot version
+      ansible.builtin.debug:
+        msg: "Installed Certbot version: {{ certbot_version.stdout }}"
