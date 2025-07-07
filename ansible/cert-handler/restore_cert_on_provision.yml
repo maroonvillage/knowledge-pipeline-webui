@@ -1,6 +1,6 @@
 ---
-- name: Restore Let's Encrypt cert from S3 to EC2
-  hosts: ec2
+- name: Restore SSL cert from S3 to EC2
+  hosts: web
   become: true
   vars_files:
     - group_vars/ec2.yml
@@ -14,21 +14,68 @@
 
     - name: Download cert backup from S3
       ansible.builtin.command: >
-        aws s3 cp s3://{{ s3_bucket_name }}/{{ s3_key }} {{ letsencrypt_zip }}
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ s3_cert_key }} {{ self_signed_cert_zip }}
+      register: s3_download_cert
+      ignore_errors: true
       args:
-        creates: "{{ letsencrypt_zip }}"
+        creates: "{{ self_signed_cert_zip }}"
 
-    - name: Unarchive cert into root
-      ansible.builtin.unarchive:
-        src: "{{ letsencrypt_zip }}"
-        dest: /
-        remote_src: yes
-        extra_opts: [--strip-components=1]
+    - name: Fail if public cert zip file not found in S3
+      ansible.builtin.fail:
+        msg: "Public cert not found for domain {{ domain_name }} in S3 bucket."
+      when: not s3_download_cert.stat.exists
 
-    - name: Ensure correct permissions
-      ansible.builtin.file:
-        path: /etc/letsencrypt
-        owner: root
-        group: root
-        mode: '0700'
-        recurse: yes
+
+    - name: Download key backup from S3
+      ansible.builtin.command: >
+        aws s3 cp s3://{{ s3_bucket_name }}/{{ s3_private_key }} {{ self_signed_private_key_zip }}
+      register: s3_download_key
+      ignore_errors: true
+      args:
+        creates: "{{ self_signed_private_key_zip }}"       
+
+    - name: Fail if private ckeyert zip file not found in S3
+      ansible.builtin.fail:
+        msg: "Private key not found for domain {{ domain_name }} in S3 bucket."
+      when: not s3_download_key.stat.exists
+
+    #- name: Unarchive cert into root
+    #  ansible.builtin.command: tar -xpvzf {{letsencrypt_zip}} -C /
+    #   ansible.builtin.command: >
+    #     tar -xpvzf {{letsencrypt_zip}} -C /
+    #     src: "{{ letsencrypt_zip }}"
+    #     dest: /
+    #     remote_src: yes
+    #     extra_opts: [--strip-components=1]
+    #   when: not s3_download.failed
+
+    # - name: Extract Let's Encrypt archive to root
+    #   ansible.builtin.command: tar -xpvzf {{letsencrypt_zip}} -C /
+    #   # ansible.builtin.unarchive:
+    #   #   src: "{{ letsencrypt_zip }}"
+    #   #   dest: /
+    #   #   remote_src: yes
+    #   #   extra_opts: [--strip-components=1]
+    #   # when: not s3_download.failed
+
+    # - name: Confirm Success of Download
+    #   ansible.builtin.debug:
+    #     msg: "The certificate was successfully dowonloaded: {{ certbot_version.stdout }}"
+    #   when: not s3_download.failed
+
+    # - name: Confirm Failure of Download
+    #   ansible.builtin.debug:
+    #     msg: "The download failed: {{ certbot_version.stderr }}"
+    #   when: s3_download.failed
+
+
+    # - name: Ensure correct permissions
+    #   ansible.builtin.file:
+    #     path: /etc/letsencrypt
+    #     owner: root
+    #     group: root
+    #     mode: '0700'
+    #     recurse: yes
+    #   when: not s3_download.failed
+
+    #   # If there is no download then run the 

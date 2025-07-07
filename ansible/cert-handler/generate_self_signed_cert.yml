@@ -1,0 +1,33 @@
+---
+- name: Generate self-signed certificate if missing or expired
+  hosts: web
+  become: yes
+  gather_facts: no
+  connection: ssh
+  vars:
+    cert_path: "/etc/ssl/certs/selfsigned.crt"
+    key_path: "/etc/ssl/private/selfsigned.key"
+    cert_days: 1
+    common_name: "ec2-50-18-246-77.us-west-1.compute.amazonaws.com"
+  tasks:
+    - name: Ensure /etc/ssl/private directory exists
+      ansible.builtin.file:
+        path: /etc/ssl/private
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Check if self-signed cert exists
+      ansible.builtin.stat:
+        path: "{{ cert_path }}"
+      register: cert_file
+
+    - name: Generate self-signed certificate (90 days)
+      ansible.builtin.command: >
+        openssl req -x509 -nodes -days {{ cert_days }}
+        -newkey rsa:2048
+        -keyout {{ key_path }}
+        -out {{ cert_path }}
+        -subj "/C=US/ST=NY/L=NY/O=YourOrg/OU=IT/CN={{ common_name }}"
+      when: not cert_file.stat.exists

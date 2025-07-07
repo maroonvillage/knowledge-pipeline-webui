@@ -1,0 +1,138 @@
+---
+- name: Provision or Renew Self-Signed Certificate on EC2 Instance
+  hosts: web
+  become: yes
+  gather_facts: no
+  connection: ssh
+
+  vars:
+    # --- Certificate Configuration ---
+    cert_domain: "ec2-54-176-197-123.us-west-1.compute.amazonaws.com" # Use a descriptive name
+    cert_base_path: "/etc/ssl"
+    cert_path: "{{ cert_base_path }}/certs/selfsigned.crt"
+    key_path: "{{ cert_base_path }}/private/selfsigned.key"
+    cert_days: 90
+    cert_subj: "/C=US/ST=CA/L=SF/O=DevOrg/OU=IT/CN={{ cert_domain }}"
+
+    # --- S3 Configuration ---
+    s3_bucket: "next9bucket01"
+    s3_key: "certs/selfsigned_{{ cert_domain }}.tar.gz"
+    local_archive_path: "/tmp/selfsigned_{{ cert_domain }}.tar.gz"
+
+  tasks:
+    - name: Ensure Python cryptography library is present on remote host
+      ansible.builtin.package:
+        name: python3-cryptography
+        state: present
+      # Use 'yum' or other package manager if not on a Debian/Ubuntu based system
+
+    - name: Ensure certificate parent directory exists
+      ansible.builtin.file:
+        path: "{{ cert_base_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # =========================================================================
+    # Task 1: Download existing certificate archive from S3
+    # =========================================================================
+    - name: Download certificate archive from S3 if it exists
+      community.aws.s3_object:
+        bucket: "{{ s3_bucket }}"
+        object: "{{ s3_key }}"
+        dest: "{{ local_archive_path }}"
+        mode: get
+      register: s3_download
+      ignore_errors: true # Continue if the file doesn't exist in S3
+
+    - name: Extract certificate archive if it was downloaded
+      ansible.builtin.unarchive:
+        src: "{{ local_archive_path }}"
+        dest: "/" # Extract to root to preserve absolute paths in archive
+        remote_src: yes # The archive is on the remote host
+      when: not s3_download.failed
+
+    # =========================================================================
+    # Task 2: Check if certificate exists and is valid
+    # =========================================================================
+    - name: Check if certificate file exists on disk
+      ansible.builtin.stat:
+        path: "{{ cert_path }}"
+      register: cert_file_stat
+
+    - name: Check certificate expiration date if it exists
+      block:
+        - name: Get certificate expiration date
+          community.crypto.x509_certificate_info:
+            path: "{{ cert_path }}"
+          register: cert_info
+
+        - name: Determine if certificate has expired
+          ansible.builtin.set_fact:
+            certificate_is_expired: "{{ (cert_info.not_after | to_datetime('%Y-%m-%d %H:%M:%S')) < (ansible_date_time.iso8601 | to_datetime) }}"
+      when: cert_file_stat.stat.exists
+      # We need to gather facts for this one check to get the current time
+      # so we enable it just for this block.
+      gather_facts: true
+
+
+    # =========================================================================
+    # Task 3: Generate a new certificate if one does not exist or has expired
+    # =========================================================================
+    - name: Set flag for certificate generation
+      ansible.builtin.set_fact:
+        needs_new_cert: "{{ not cert_file_stat.stat.exists or certificate_is_expired | default(false) }}"
+
+    - name: "DEBUG: Certificate status"
+      ansible.builtin.debug:
+        msg: >
+          Certificate exists: {{ cert_file_stat.stat.exists }}.
+          Certificate expired: {{ certificate_is_expired | default('N/A') }}.
+          Decision: {{ 'Generating new certificate.' if needs_new_cert else 'Existing certificate is OK.' }}"
+
+    - name: Generate new private key and self-signed certificate
+      block:
+        - name: Generate a new private key
+          community.crypto.openssl_privatekey:
+            path: "{{ key_path }}"
+            mode: "0600" # Important: Keep key private
+
+        - name: Generate a new self-signed certificate
+          community.crypto.openssl_certificate:
+            path: "{{ cert_path }}"
+            privatekey_path: "{{ key_path }}"
+            provider: selfsigned
+            selfsigned_not_after: "+{{ cert_days * 24 * 3600 }}s" # Specify validity in seconds
+            selfsigned_subject: "{{ cert_subj }}"
+      when: needs_new_cert
+      register: new_cert_generated
+
+    # =========================================================================
+    # Task 4: Compress and save the NEW certificate to S3
+    # =========================================================================
+    - name: Compress newly generated certificate files for S3 backup
+      community.general.archive:
+        path:
+          - "{{ cert_path }}"
+          - "{{ key_path }}"
+        dest: "{{ local_archive_path }}"
+        format: gz
+        owner: root
+        group: root
+        mode: "0600"
+      when: new_cert_generated.changed # Only run if a new cert was made
+
+    - name: Upload new certificate archive to S3
+      community.aws.s3_object:
+        bucket: "{{ s3_bucket }}"
+        object: "{{ s3_key }}"
+        src: "{{ local_archive_path }}"
+        mode: put
+      when: new_cert_generated.changed
+
+    - name: Clean up local archive file
+      ansible.builtin.file:
+        path: "{{ local_archive_path }}"
+        state: absent
+      when: s3_download.failed or new_cert_generated.changed

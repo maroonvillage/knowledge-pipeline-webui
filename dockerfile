@@ -28,7 +28,7 @@ COPY . .
 # Example: Setting build-time arg (less common for frontend API URLs)
 # ARG REACT_APP_API_URL=/api
 # ENV REACT_APP_API_URL=$REACT_APP_API_URL
-RUN npm run build
+RUN npm install && npm run build
 
 # ---- Serve Stage ----
 # Use a lightweight Nginx image to serve the static files
@@ -47,3 +47,5 @@ EXPOSE 80
 # Default command for Nginx image starts the server
 # This is usually the default
 CMD ["nginx", "-g", "daemon off;"] 
+# Optional: if you want to serve with a basic static server for local dev
+#CMD ["npx", "serve", "-s", "build", "-l", "3000"]

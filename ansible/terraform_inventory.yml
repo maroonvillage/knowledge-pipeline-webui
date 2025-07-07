@@ -1,0 +1,2 @@
+plugin: community.general.terraform
+project_path: ../terraform  # Path to your Terraform project directory

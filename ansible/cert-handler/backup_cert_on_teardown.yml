@@ -12,12 +12,22 @@
         state: present
       loop: [zip, awscli]
 
-    - name: Zip Let's Encrypt certs
+    - name: Zip Self-signed public cert
       ansible.builtin.command: >
-        zip -r {{ letsencrypt_zip }} {{ letsencrypt_dir }}
+        tar -czvf {{ self_signed_cert_zip }} {{ self_signed_public_cert }}
       args:
-        creates: "{{ letsencrypt_zip }}"
+        creates: "{{ self_signed_cert_zip }}"
 
     - name: Upload cert backup to S3
       ansible.builtin.command: >
-        aws s3 cp {{ letsencrypt_zip }} s3://{{ s3_bucket_name }}/{{ s3_key }}
+        aws s3 cp {{ self_signed_cert_zip }} s3://{{ s3_bucket_name }}/{{ s3_cert_key }}
+
+    - name: Zip Selfsigned private key
+      ansible.builtin.command: >
+        tar -czvf {{ self_signed_private_key_zip }} {{ self_signed_private_key }}
+      args:
+        creates: "{{ self_signed_private_key_zip }}"
+
+    - name: Upload cert backup to S3
+      ansible.builtin.command: >
+        aws s3 cp {{ self_signed_private_key_zip }} s3://{{ s3_bucket_name }}/{{ s3_private_key }}

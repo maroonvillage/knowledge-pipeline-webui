@@ -18,6 +18,14 @@ resource "aws_security_group" "sg" {
   }
 
   ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["${var.local_ip}/32"] # Make sure to narrow this down!
+  }
+
+
+  ingress {
       from_port   = 3000
       to_port     = 3000
       protocol    = "tcp"

@@ -1,0 +1,13 @@
+---
+- name: Provision SSL Certificate
+
+  tasks:
+    - name: Upload local certificate to S3 bucket
+      ansible.builtin.import_playbook: ../cert-handler/upload_cryptology_s3.yml
+      tags:
+        - upload_local_cert
+
+    # - name: Restore SSL certificate from S3 to EC2
+    #   ansible.builtin.import_playbook: ../cert-handler/restore_cert_on_provision.yml
+    #   tags:
+    #     - restore_ssl_cert

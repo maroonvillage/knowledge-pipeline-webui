@@ -1,0 +1,20 @@
+---
+- name: Deploy Secure NGINX Configuration
+  hosts: web
+  become: yes
+
+  tasks:
+    - name: Deploy webapp HTTPS reverse proxy configuration
+      ansible.builtin.copy:
+        src: ../files/webapp.conf # Path to your local static conf file
+        dest: /etc/nginx/conf.d/webapp.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload Nginx
+
+  handlers:
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

@@ -1,5 +1,8 @@
-s3_bucket_name: my-ssl-backup-bucket
-domain_name: example.com
-s3_key: letsencrypt/{{ domain_name }}.zip
-letsencrypt_dir: /etc/letsencrypt
-letsencrypt_zip: /tmp/letsencrypt.zip
+s3_bucket_name: next9bucket01
+domain_name: next9.com
+s3_cert_key: uploads/certs/selfsgned_cert_{{ domain_name }}.tar.gz
+s3_private_key: uploads/certs/selfsgned_key_{{ domain_name }}.tar.gz
+self_signed_public_cert: /etc/ssl/certs/selfsigned.crt
+self_signed_private_key: /etc/ssl/private/selfsigned.key
+self_signed_cert_zip: /tmp/selfsigned_cert.tar.gz
+self_signed_private_key_zip: /tmp/selfsigned_key.tar.gz

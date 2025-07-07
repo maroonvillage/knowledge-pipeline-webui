@@ -8,7 +8,7 @@ services:
     # Or use 'environment:' for runtime variables
     environment:
        - APP_ENV=production
-       - ALLOWED_CORS_ORIGINS=http://50.18.89.31:3000,https://50.18.89.31:3000,https://ec2-50-18-89-31.us-west-1.compute.amazonaws.com,http://ec2-50-18-89-31.us-west-1.compute.amazonaws.com
+       - ALLOWED_CORS_ORIGINS=http://50.18.246.77:3000,https://50.18.246.77:3000,https://ec2-50-18-246-77.us-west-1.compute.amazonaws.com,http://ec2-50-18-246-77.us-west-1.compute.amazonaws.com
        #- AWS_REGION_ENV=${AWS_REGION} # Pass AWS region as an environment variable
     #   - DATABASE_URL=your_production_db_url
     networks:
@@ -26,7 +26,7 @@ services:
     image: 686255962220.dkr.ecr.us-west-1.amazonaws.com/next9-frontend-app-repo # ECR Image
     container_name: pdf_frontend_prod
     ports:
-      - "80:80" # Common to use port 80 directly in production if no other web server on host
+      - "3000:80" # Common to use port 80 directly in production if no other web server on host
                 # Or "3000:80" if you still want to access it via port 3000 on EC2
     depends_on:
       - backend

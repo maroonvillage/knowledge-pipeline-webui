@@ -13,28 +13,32 @@
   tags:
     - setup_docker # Tag for running only the Docker setup
 
-
-- name: Restore SSL Certificate On Provision  
-  ansible.builtin.import_playbook: cert-handler/restore_cert_on_provision.yml
+- name: Install and configure NGINX on EC2 host
+  ansible.builtin.import_playbook: playbooks/install_nginx_ec2.yml
   tags:
-    - restore_cert
+    - install_nginx # Tag for running only the NGINX installation
+   
+# - name: Upload Cryptology
+#   ansible.builtin.import_playbook: cert-handler/upload_cryptology_s3.yml
+#   tags:
+#     - upload_ssl_cert # Tag for running only the ssl certificate provisioning
 
-- name: Renew SSL Certificate  
-  ansible.builtin.import_playbook: cert-handler/renew_cert.yml
-  tags:
-    - renew_cert
+# - name: Restore SSL cert from S3 to EC2
+#   ansible.builtin.import_playbook: cert-handler/restore_cert_on_provision.yml
+#   tags:
+#     - restore_cert_on_ec2  
 
-- name: Backup SSL Certificate
-  ansible.builtin.import_playbook: cert-handler/backup_cert_on_teardown.yml
+- name: Get Self-Signed Cert if missing or expired
+  ansible.builtin.import_playbook: cert-handler/generate_self_signed_cert.yml
   tags:
-    - backup_cert
+    - get_self_signed_cert
 
-- name: Download SSL Certificate to Local
-  ansible.builtin.import_playbook: cert-handler/download_to_local.yml
+- name: Configure NGINX for the application
+  ansible.builtin.import_playbook: playbooks/nginx_conf.yml
   tags:
-    - download_cert_to_local
+    - configure_nginx # Tag for running only the NGINX configuration
 
 - name: Import EC2 Application Deployment Playbook
-  ansible.builtin.import_playbook: cert-handler/deploy_app_on_ec2.yml
+  ansible.builtin.import_playbook: playbooks/deploy_app_on_ec2.yml
   tags:
     - deploy_app # Tag for deploying the application on EC2 (compose, pull, run)
