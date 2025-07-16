@@ -101,5 +101,6 @@
         state: present # Ensures services are up (equivalent to docker-compose up -d)
         recreate: never # Recreate containers if config or image changes
       environment:
-          AWS_REGION: "us-west-1"
+          AWS_REGION: "{{ aws_region }}"
+          ALLOWED_CORS_ORIGINS: "{{ allowed_cors_origins }}"
 

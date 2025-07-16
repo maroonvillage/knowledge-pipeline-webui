@@ -44,12 +44,12 @@ const handleUpload = async () => {
                     content_type: selectedFile.type || 'application/octet-stream' // Fallback if file.type is missing
                 });
 
-                const presignedUrlEndpoint = `/api/generate-presigned-url?${params.toString()}`;
-                // Ensure your React dev server proxy or Nginx proxy is set up for /api routes
-                // const presignedUrlResponse = await fetch(
-                //     // Make sure your API prefix is correct for your setup (proxy or Nginx)
-                //     `/api/generate-presigned-url/${encodeURIComponent(file.name)}`
-                //     );
+                //TODO: Change the fetch URL to start with https://your-domain/... to force HTTPS requests.
+                const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT;
+                const presignedUrlEndpoint = `${API_ENDPOINT}/api/generate-presigned-url?${params.toString()}`;
+
+                //const presignedUrlEndpoint = `https://ec2-18-144-1-181.us-west-1.compute.amazonaws.com/api/generate-presigned-url?${params.toString()}`;
+
                 const presignedUrlResponse = await fetch(presignedUrlEndpoint);
 
                 if (!presignedUrlResponse.ok) {

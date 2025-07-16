@@ -5,9 +5,29 @@
 
   tasks:
     - name: Deploy webapp HTTPS reverse proxy configuration
-      ansible.builtin.copy:
-        src: ../files/webapp.conf # Path to your local static conf file
+      ansible.builtin.template:
+        src: ../templates/webapp.conf.j2 # Path to your local static conf file
         dest: /etc/nginx/conf.d/webapp.conf
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Check if the original nginx.conf file exists
+      ansible.builtin.stat:
+        path: /etc/nginx/nginx.conf
+      register: nginx_conf_stat # Save the result into a variable
+
+    - name: Rename nginx.conf to nginx.conf.bak if it exists
+      ansible.builtin.command:
+        cmd: mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak
+      
+      # This task will only run if the 'stat' task found the file.
+      when: nginx_conf_stat.stat.exists
+
+    - name: Deploy custom nginx.conf
+      ansible.builtin.template:
+        src: ../templates/nginx.conf.j2 # Path to your local static conf file
+        dest: /etc/nginx/nginx.conf
         owner: root
         group: root
         mode: '0644'

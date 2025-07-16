@@ -1,4 +1,5 @@
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from urllib.parse import unquote  # Import unquote
 import json
@@ -7,21 +8,19 @@ import logging.config
 import os
 from pydantic import BaseModel
 from typing import Any, List
-import uuid
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, Request, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, Request, UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from services.file_processing import process_file, call_pdfdocintel_extraction, \
-    get_file_metadata, check_file, call_pdfdocintel_get_tables_file, \
-        call_pdfdocintel_get_keywords_file,clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3, \
+    clear_files, get_filename_prefix, get_files_from_s3 , get_file_metadata_from_s3, \
         call_pdfdocintel_get_tables_file_s3, call_pdfdocintel_get_keywords_file_s3
 from services.data_service import get_document_sections, get_keyword_query_results, get_document_tables
 from models.file_metadata import FileMetadata
 from models.section import Section
 from models.table import Table
 from models.keyword_query_result import KeywordQueryResult
-from pdfdocintel import find_file_by_prefix, strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE, \
-    FILE_EXTENTION_PROCESSED, find_file_in_bucket_by_prefix
+from pdfdocintel import strip_non_alphanumeric, get_filename_no_extension, FILE_STORAGE, \
+    FILE_EXTENTION_PROCESSED, find_file_in_bucket_by_prefix, upload_to_s3
 
 
 # Load logging configuration from file
@@ -139,9 +138,23 @@ if not os.path.exists(KEYWORDS_DIR):
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-s3_client = boto3.client("s3", region_name=FILE_STORAGE['cloud_config']['region_name'],)
+# Define a secure botocore configuration
+secure_config = Config(
+    retries={'max_attempts': 5},
+    connect_timeout=3,
+    read_timeout=5,
+    signature_version='s3v4',  # Enforces AWS Signature Version 4
+    user_agent_extra='SecureWebAppClient/1.0'
+)
 
+region = FILE_STORAGE['cloud_config']['region_name']
+ssl_flag = FILE_STORAGE['cloud_config']['use_ssl']
+s3_client = boto3.client("s3", region_name=region,
+                        config=secure_config,
+                        use_ssl=ssl_flag  # 🔒 Ensures HTTPS requests
+    )
 
+#s3://next9bucket01/uploads/
 def load_mock_data(filename: str, data_model: BaseModel):
     """Loads mock data from a JSON file."""
     try:
@@ -215,7 +228,7 @@ async def generate_presigned_url(
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
 
-    return {"uploadUrl": presigned_url_response, "objectKey": object_key}
+    return JSONResponse(content={"uploadUrl": presigned_url_response, "objectKey": object_key})
 
 
 @app.get("/get_files", response_model=List[Any])
@@ -536,7 +549,7 @@ async def download_keywords_file(filename: str):
 async def main(filename: str):
      await call_pdfdocintel_extraction(filename)
 
-
+import asyncio
 if __name__ == "__main__":
     
     async def main():
@@ -544,6 +557,17 @@ if __name__ == "__main__":
         import uvicorn
         uvicorn.run(app, host="0.0.0.0", port=5001)
         
+    #     # Example test values
+    #     test_filepath = "test.pdf"
+    #     test_content_type = "application/pdf"
+        
+    #     # Call the endpoint function directly
+    #     result = await generate_presigned_url(
+    #         filepath=test_filepath,
+    #         content_type=test_content_type
+    #     )
+    #     print(result)
     
+    # asyncio.run(main())
     
    
