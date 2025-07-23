@@ -13,21 +13,11 @@
   tags:
     - setup_docker # Tag for running only the Docker setup
 
-- name: Install and configure NGINX on EC2 host
-  ansible.builtin.import_playbook: playbooks/install_nginx_ec2.yml
-  tags:
-    - install_nginx # Tag for running only the NGINX installation
+# - name: Install and configure NGINX on EC2 host
+#   ansible.builtin.import_playbook: playbooks/install_nginx_ec2.yml
+#   tags:
+#     - install_nginx # Tag for running only the NGINX installation
    
-# - name: Upload Cryptology
-#   ansible.builtin.import_playbook: cert-handler/upload_cryptology_s3.yml
-#   tags:
-#     - upload_ssl_cert # Tag for running only the ssl certificate provisioning
-
-# - name: Restore SSL cert from S3 to EC2
-#   ansible.builtin.import_playbook: cert-handler/restore_cert_on_provision.yml
-#   tags:
-#     - restore_cert_on_ec2  
-
 - name: Get Self-Signed Cert if missing or expired
   ansible.builtin.import_playbook: cert-handler/generate_self_signed_cert.yml
   tags:
@@ -37,8 +27,9 @@
   ansible.builtin.import_playbook: playbooks/nginx_conf.yml
   tags:
     - configure_nginx # Tag for running only the NGINX configuration
-
+    
 - name: Import EC2 Application Deployment Playbook
   ansible.builtin.import_playbook: playbooks/deploy_app_on_ec2.yml
   tags:
     - deploy_app # Tag for deploying the application on EC2 (compose, pull, run)
+

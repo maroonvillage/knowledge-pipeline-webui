@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Button, Typography, Box, LinearProgress, Alert } from '@mui/material';
+import { getConfig } from '../utils/config';
 
 function DocumentIngestionOptions() {
     const fileInputRef = useRef(null);
@@ -35,23 +36,23 @@ const handleUpload = async () => {
     // STAGE 1: Get Presigned URL
     
     try {
-        let uploadUrl, objectKey;
+        let uploadUrl, objectKey, backendContentType;
         try {
             // 1. Get Presigned URL from your backend
             // Pass filename and content_type as query parameters
-                const params = new URLSearchParams({
-                    filename: encodeURIComponent(selectedFile.name),
-                    content_type: selectedFile.type || 'application/octet-stream' // Fallback if file.type is missing
-                });
-
-                //TODO: Change the fetch URL to start with https://your-domain/... to force HTTPS requests.
-                const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT;
-                const presignedUrlEndpoint = `${API_ENDPOINT}/api/generate-presigned-url?${params.toString()}`;
-
-                //const presignedUrlEndpoint = `https://ec2-18-144-1-181.us-west-1.compute.amazonaws.com/api/generate-presigned-url?${params.toString()}`;
+                // const params = new URLSearchParams({
+                //     filename: encodeURIComponent(selectedFile.name),
+                //     content_type: encodeURIComponent(selectedFile.type || 'application/octet-stream') // Fallback if file.type is missing
+                // });
+                const filename = encodeURIComponent(selectedFile.name);
+                const content_type = encodeURIComponent(selectedFile.type || 'application/octet-stream'); // Fallback if file.type is missing
+                const config = getConfig();
+                const API_ENDPOINT = config?.DNS_PUBLIC_NAME ?? ''; 
+                const presignedUrlEndpoint = `${API_ENDPOINT}/api/generate-presigned-url/${filename}?content_type=${content_type}`;
 
                 const presignedUrlResponse = await fetch(presignedUrlEndpoint);
-
+                console.log('[DEBUG] Fetching presigned URL from:', presignedUrlEndpoint);
+                console.log('[DEBUG] Presigned URL Response Status:', presignedUrlResponse.status);
                 if (!presignedUrlResponse.ok) {
                     //const errorData = await presignedUrlResponse.json().catch(() => ({ detail: "Failed to get upload URL." }));
                     //throw new Error(errorData.detail || `Failed to get upload URL: ${presignedUrlResponse.statusText}`);
@@ -74,6 +75,7 @@ const handleUpload = async () => {
                 const jsonData = await presignedUrlResponse.json();
                 uploadUrl = jsonData.uploadUrl;
                 objectKey = jsonData.objectKey;
+                backendContentType = jsonData.content_type; // Use the content type from the response if available
                 console.log('[DEBUG] Got presigned URL:', uploadUrl, 'Object Key:', objectKey);
             } catch (presignedError) {
                 console.error("ERROR GETTING PRESIGNED URL:", presignedError);
@@ -84,10 +86,21 @@ const handleUpload = async () => {
 
             setUploadStatus({ message: 'Uploading to S3...', type: 'info' });
             try {
+
+                if (selectedFile.type !== backendContentType) {
+                    setUploadStatus({
+                        message: `Content-Type mismatch. Expected '${backendContentType}' but got '${selectedFile.type}'.`,
+                        type: 'error'
+                    });
+                    console.warn('[GUARD] Aborting upload due to Content-Type mismatch.');
+                    return;
+                    }
+
                 // 2. Upload the file directly to S3 using the presigned URL
                 const xhr = new XMLHttpRequest(); // Using XHR for progress tracking
 
                 xhr.open('PUT', uploadUrl, true);
+                //Comment out request header if not needed, since the pre-signed-url was not signed with the content type.
                 xhr.setRequestHeader('Content-Type', selectedFile.type || 'application/octet-stream');
                 console.log('[DEBUG] XHR opened. Uploading with Content-Type:', selectedFile.type || 'application/octet-stream');
                 // You might need to set other headers if your S3 policy/CORS requires them,

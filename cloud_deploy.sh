@@ -4,6 +4,8 @@ set -e # Exit immediately if a command exits with a non-zero status.
 # Define relative paths to our tool directories from the script's location
 TERRAFORM_DIR="terraform"
 ANSIBLE_DIR="ansible"
+CONFIG_DIR="public"
+CONFIG_FILE_PATH="${CONFIG_DIR}/config.json"
 ANSIBLE_INVENTORY_FILE="${ANSIBLE_DIR}/inventory.ini"
 TERRAFORM_PLAN_FILE="terraform_plan_output.tfplan"
 
@@ -55,12 +57,20 @@ read -p "Press any key to continue..." -n 1 -r
 echo
 
 echo "--- Step 4: Building the React Frontend with the correct API endpoint ---"
+
+# Write config.json with the REACT_APP_API_ENDPOINT value
+cat > "$CONFIG_FILE_PATH" <<EOF
+{
+  "DNS_PUBLIC_NAME": "https://${PUBLIC_DNS}"
+}
+EOF
+
 # Set the environment variable for the build process
 #export REACT_APP_API_ENDPOINT="https://${PUBLIC_DNS}"
-echo "AWS_REGION=us-west-1" > .prod.env
-echo "REACT_APP_API_ENDPOINT=https://${PUBLIC_DNS}" >> .prod.env
-#npm run build
-dotenv -f .prod.env -e false run npm run build
+#echo# "AWS_REGION=us-west-1" > .prod.env
+#echo "REACT_APP_API_ENDPOINT=https://${PUBLIC_DNS}" >> .prod.env
+npm run build
+#dotenv -f .prod.env run npm run build
 # After this, you would typically build your Docker image with these new static files
 
 

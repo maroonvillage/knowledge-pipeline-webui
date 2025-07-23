@@ -30,7 +30,7 @@ resource "aws_s3_bucket_cors_configuration" "pdfdocintel" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "DELETE"]
-    allowed_origins = ["https://${var.ec2_dns_name},http://${var.ec2_dns_name}"]
+    allowed_origins = ["https://${var.ec2_dns_name}"]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }

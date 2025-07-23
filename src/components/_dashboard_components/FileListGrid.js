@@ -3,7 +3,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import { Link } from 'react-router-dom';
 import { Typography } from '@mui/material';
 //import { render } from '@testing-library/react';
-
+import { getConfig } from '../../utils/config';
 
 
 function FileListGrid() {
@@ -15,7 +15,9 @@ function FileListGrid() {
     useEffect(() => {
         const fetchData = async () => {
           try {
-            const response = await fetch(`/api/get_files`);
+            const config = getConfig();
+            const API_ENDPOINT = config?.DNS_PUBLIC_NAME ?? ''; 
+            const response = await fetch(`${API_ENDPOINT}/api/get_files`);
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }

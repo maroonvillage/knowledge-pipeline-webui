@@ -7,7 +7,7 @@ import logging
 import logging.config
 import os
 from pydantic import BaseModel
-from typing import Any, List
+from typing import Any, List 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, Request, UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
@@ -191,11 +191,17 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.get("/generate-presigned-url/{filepath:path}")
 async def generate_presigned_url(
+    request: Request,
     filepath: str,
     content_type: str = 'application/octet-stream'):
     """
     Generates a presigned URL for uploading a file directly to S3.
     """
+    scheme = request.headers.get("X-Forwarded-Proto", "https")
+    host = request.headers.get("host", request.client.host)
+    base_url = f"{scheme}://{host}"
+    logger.info(f"Base URL: {base_url}/api")  # Log the base URL
+    
     decoded_filename = unquote(filepath)  # Decode the filename
     decoded_content_type = unquote(content_type)  # Decode the content type
     
@@ -220,6 +226,8 @@ async def generate_presigned_url(
             },
             ExpiresIn=3600  # URL expires in 1 hour (3600 seconds)
         )
+        # Replace protocol in generated URL if needed
+        presigned_url_response = presigned_url_response.replace("http://", "https://")
     except ClientError as e:
         print(f"Error generating presigned URL: {e}")
         raise HTTPException(status_code=500, detail="Could not generate upload URL.")
@@ -228,7 +236,7 @@ async def generate_presigned_url(
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
 
-    return JSONResponse(content={"uploadUrl": presigned_url_response, "objectKey": object_key})
+    return JSONResponse(content={"uploadUrl": presigned_url_response, "objectKey": object_key, "content_type": decoded_content_type})
 
 
 @app.get("/get_files", response_model=List[Any])
@@ -555,7 +563,7 @@ if __name__ == "__main__":
     async def main():
         print("Starting FastAPI server...")
         import uvicorn
-        uvicorn.run(app, host="0.0.0.0", port=5001)
+        uvicorn.run(app, host="0.0.0.0", port=8000, proxy_headers=True, forwarded_allow_ips="*")
         
     #     # Example test values
     #     test_filepath = "test.pdf"

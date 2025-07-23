@@ -16,10 +16,13 @@
 
   tasks:
     - name: 1. Update all yum packages
-      ansible.builtin.yum:
-        name: '*'
-        state: latest
-        update_cache: yes
+      ansible.builtin.command:
+        cmd: sudo yum update -y
+      register: yum_update_result
+      #ansible.builtin.yum_repository:
+        # name: '*'
+        # state: latest
+        # update_cache: yes
 
     - name: 2. Install Docker (using yum)
       shell: sudo yum install -y docker

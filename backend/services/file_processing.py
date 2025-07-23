@@ -398,9 +398,9 @@ async def call_pdfdocintel_get_keywords_file_s3(bucket_name: str, pdf_filename: 
         #     first_file = False
         
     except json.JSONDecodeError as e:
-        logger.error(f"JSONDecodeError: {e} when loading file: {json_file_path}. Error: {e}")
+        logger.error(f"JSONDecodeError: {e} when loading file: {full_output_path}. Error: {e}")
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {e} when processing file: {json_file_path}. Error: {e}")
+        logger.error(f"An unexpected error occurred: {e} when processing file: {full_output_path}. Error: {e}")
     except FileNotFoundError as e:
       logger.error(f"FileNotFoundError: {e} when listing files in folder: {parm_config.get_output_csv_dir()}. Error: {e}")
     except Exception as e:
