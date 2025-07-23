@@ -50,3 +50,5 @@ backend/logs/access.log
 .env.prod
 .prod.env
 terraform.tfstate
+keypairs/ssl/certs/selfsigned.crt
+keypairs/ssl/private/selfsigned.key
