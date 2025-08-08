@@ -23,7 +23,7 @@ resource "aws_iam_role" "ec2_app_instance_role" { # New, descriptive local name
         {
           Effect = "Allow",
           Principal = {
-            AWS = var.allow_user_to_assume_ec2_role_arn
+            AWS = replace(var.allow_user_to_assume_ec2_role_arn, "_ACCOUNT_ID_", var.aws_account_id)
           },
           Action = "sts:AssumeRole"
           # Sid    = "AllowSpecificUserToAssumeRole" # Optional Statement ID
@@ -49,7 +49,7 @@ resource "aws_iam_role" "ec2_app_instance_role" { # New, descriptive local name
 # Option A: Use AWS Managed Policy (e.g., ReadOnly or ReadWrite - choose least privilege)
 resource "aws_iam_role_policy_attachment" "ec2_s3_access" {
   role       = aws_iam_role.ec2_app_instance_role.name
-  policy_arn = "arn:aws:iam::686255962220:policy/pdfdocintel-monolith-s3" # Or AmazonS3FullAccess if write is needed.
+  policy_arn = "${replace(var.s3_policy_instance_arn, "_ACCOUNT_ID_", var.aws_account_id)}" # Or AmazonS3FullAccess if write is needed.
                                                                  # Best: Create a custom policy for specific bucket(s).
 }
 # Option B: Custom S3 Policy for Least Privilege (Recommended)
@@ -84,7 +84,7 @@ resource "aws_iam_role_policy_attachment" "ec2_s3_custom_attachment" {
 # ECR Access (to pull images)
 resource "aws_iam_role_policy_attachment" "ec2_ecr_access" {
   role       = aws_iam_role.ec2_app_instance_role.name
-  policy_arn = "arn:aws:iam::686255962220:policy/pdfdocintel-monolith-ecr"
+  policy_arn = "${replace(var.ecr_policy_instance_arn, "_ACCOUNT_ID_", var.aws_account_id)}" # Example, refine this
   # This allows pulling images. If the instance needs to push, you'd need more permissions.
 }
 
@@ -94,7 +94,7 @@ resource "aws_iam_role_policy_attachment" "ec2_secrets_manager_access" {
   # Choose least privilege. If only reading specific secrets:
   # policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite" # Broader
   # Better: Create a custom policy granting read access to specific secret ARNs.
-  policy_arn = "arn:aws:iam::686255962220:policy/pdfdocintel-monolith-secretsmgr" # Example, refine this
+  policy_arn = "${replace(var.secretsmgr_policy_instance_arn, "_ACCOUNT_ID_", var.aws_account_id)}" # Example, refine this
 }
 
 

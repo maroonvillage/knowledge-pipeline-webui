@@ -1,5 +1,5 @@
 data "aws_key_pair" "existing" {
-  key_name = "pdfdocintel_ssh_key_pair"  # Replace with the name of your key pair
+  key_name = var.ssh_key_pair_name  # Replace with the name of your key pair
 }
 
 resource "aws_instance" "app_server" {
@@ -18,7 +18,7 @@ resource "aws_instance" "app_server" {
     # kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/your-kms-key-id" # If using a custom KMS key
   }
   tags = {
-    Name = "ExampleAppServerInstance"
+    Name = "Next9AppServerInstance"
   }
 }
 

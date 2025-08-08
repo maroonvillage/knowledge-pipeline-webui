@@ -9,4 +9,7 @@ terraform {
 
 provider "aws" {
   region = "us-west-1" # Replace with your desired region
+  assume_role {
+    role_arn = "arn:aws:iam::567932485725:role/TerraformCloudDeploymentRole"
+  }
 }

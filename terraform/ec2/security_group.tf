@@ -1,7 +1,7 @@
 resource "aws_security_group" "sg" {
   name        = "pdfdocintel_allow_http_ssh"
   description = "Allow HTTP and SSH traffic"
-  vpc_id      = "vpc-00230279b21071217"  # Replace with your VPC ID
+  vpc_id      = var.vpc_id  # Replace with your VPC ID
 
   ingress {
     from_port   = 80

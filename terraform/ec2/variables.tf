@@ -26,3 +26,16 @@ variable "instance_type" {
   default     = "t2.medium" # Example instance type, adjust as needed
   
 }
+
+variable "ssh_key_pair_name" {
+  description = "The name of the existing AWS EC2 Key Pair to enable SSH access to the instance."
+  type        = string
+  default     = "" # Example key pair name
+}
+
+variable "vpc_id" {
+  description = "The ID of the VPC where the security group will be created."
+  type        = string
+  default     = "vpc-0e522eeaafad66226" # Example VPC ID, replace with your own
+  
+}
